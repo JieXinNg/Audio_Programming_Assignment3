@@ -35,6 +35,11 @@ AP3AudioProcessor::AP3AudioProcessor()
     minMaxParameter = avpts.getRawParameterValue("cutoffFreq");
     delayParameter = avpts.getRawParameterValue("delayTime");
     upDownParameter = avpts.getRawParameterValue("direction");
+    for (int i = 0; i < voiceCount; i++)
+    {
+        synth.addVoice( new YourSynthVoice() );
+    }
+    synth.addSound( new MySynthSound() );
 }
 
 AP3AudioProcessor::~AP3AudioProcessor()
@@ -43,7 +48,7 @@ AP3AudioProcessor::~AP3AudioProcessor()
 
 void AP3AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    synth.setCurrentPlaybackSampleRate(sampleRate);
+    synth.setCurrentPlaybackSampleRate(sampleRate); // set the sample rate of synth
 
     sr = sampleRate;
     if (upDownParameter > 0) // if it is not the first choice
@@ -67,11 +72,11 @@ void AP3AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mid
     float* left = buffer.getWritePointer(0);
     float* right = buffer.getWritePointer(1);
 
-    // process entire block of samples
+    // process entire block of samples for synths
     synth.renderNextBlock(buffer, midiMessages, 0, numSamples);
 
     delay.setDelayTime(*delayParameter * sr); // delay
-    smoothVolume.setTargetVaue(*volumeParameter); // smooth value
+    smoothVolume.setTargetValue(*volumeParameter); // smooth value
 
     for (int i = 0; i < numSamples; i++)
     {

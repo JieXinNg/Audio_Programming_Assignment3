@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "Delay.h"
+#include "YourSynthVoice.h"
 
 //==============================================================================
 /**
@@ -63,7 +64,7 @@ private:
     std::atomic<float>* upDownParameter;
 
     // smooth values
-    SmoothedValue<float> smoothVolume;
+    juce::SmoothedValue<float> smoothVolume;
 
     // synthesiser class
     int voiceCount = 4;

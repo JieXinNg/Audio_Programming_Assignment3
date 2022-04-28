@@ -9,7 +9,6 @@
 */
 
 #pragma once
-#include <JuceHeader.h>
 
 // ===========================
 // ===========================
@@ -40,14 +39,7 @@ public:
 class YourSynthVoice : public juce::SynthesiserVoice
 {
 public:
-    YourSynthVoice() 
-    {
-        juce::ADSR::Parameters envParams;
-        envParams.attack = 0.1; // fade in
-        envParams.decay = 0.25;  // fade down to sustain level
-        envParams.sustain = 0.25; // vol level
-        envParams.release = 1.0; // fade out
-    }
+    YourSynthVoice() {}
     //--------------------------------------------------------------------------
     /**
      What should be done when a note starts
@@ -60,7 +52,6 @@ public:
     void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         playing = true;
-        float freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         
     }
     //--------------------------------------------------------------------------
@@ -73,9 +64,7 @@ public:
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
     {
-        clearCurrentNote(); // delete
-        env.setSampleRate();
-        env.noteOn();
+        clearCurrentNote();
         playing = false;
     }
     
@@ -91,7 +80,6 @@ public:
      */
     void renderNextBlock(juce::AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
-
         if (playing) // check to see if this voice should be playing
         {
             // iterate through the necessary number of samples (from startSample up to startSample + numSamples)
@@ -106,13 +94,6 @@ public:
                 {
                     // The output sample is scaled by 0.2 so that it is not too loud by default
                     outputBuffer.addSample (chan, sampleIndex, currentSample * 0.2);
-                }
-
-                float envVal = env.getNextSample();
-
-                if (envVal < 0.0001)
-                {
-                    playing = false;
                 }
             }
         }
@@ -132,21 +113,12 @@ public:
     {
         return dynamic_cast<YourSynthSound*> (sound) != nullptr;
     }
-
-    void linkParameters(std::atomic<float>* ptrToParam)
-    {
-        releaseParam = ptrToParam;
-    }
     //--------------------------------------------------------------------------
 private:
     //--------------------------------------------------------------------------
     // Set up any necessary variables here
     /// Should the voice be playing?
     bool playing = false;
-    int voiceCount = 4;
-    juce::ADSR env;
-
-    std::atomic<float>* releaseParam;
 
     /// a random object for use in our test noise function
     juce::Random random;
