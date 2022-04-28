@@ -9,6 +9,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Delay.h"
 
 //==============================================================================
 /**
@@ -54,10 +55,21 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    juce::AudioProcessorValueTreeState apvts;
-    //std::atomic<float>* 
+    juce::AudioProcessorValueTreeState avpts;
+    // parameters 
+    std::atomic<float>* volumeParameter;
+    std::atomic<float>* minMaxParameter;
+    std::atomic<float>* delayParameter;
+    std::atomic<float>* upDownParameter;
+
+    // synthesiser class
     int voiceCount = 4;
     juce::Synthesiser synth;
+
+    // sample rate
+    float sr;
+    Delay delay;
+    float delayTimeInSeconds = 0.25f;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AP3AudioProcessor)
 };

@@ -12,6 +12,7 @@
             file="Source/ExampleSynthesiser.h"/>
       <FILE id="rmsRit" name="PluginEditor.cpp" compile="1" resource="0"
             file="Source/PluginEditor.cpp"/>
+      <FILE id="y8pyCO" name="Delay.h" compile="0" resource="0" file="Source/Delay.h"/>
       <FILE id="eOlRtZ" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
   </MAINGROUP>

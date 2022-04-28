@@ -22,17 +22,60 @@ AP3AudioProcessor::AP3AudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ),
-    avpts(*this, nullptr, "ParamTree", {
-    std::makeUnique<juce::AudioPrameterFloat>("release",, "Release Time", 0.0001, 5.0, 1.0)
-        })
 #endif
+    avpts(*this, nullptr, "ParamTreeIdentifier", {
+//std::makeUnique<juce::AudioPrameterFloat>("release", "Release Time", 0.0001, 5.0, 1.0), 
+    std::make_unique < juce::AudioParameterFloat >("volume", " Volume ", 0.0f , 1.0f , 0.5f)
+, std::make_unique < juce::AudioParameterFloat >("cutoffFreq", "Cutoff Freq", 50.0f , 750.0f , 200.0f)
+, std::make_unique < juce::AudioParameterFloat >("delayTime", "Delay Time", 0.01f , 0.99f , 0.25f)
+, std::make_unique < juce::AudioParameterChoice >("direction", "Direction", juce::StringArray({"rampUp", "rampDown"}), 0)
+    })
 {
+    volumeParameter = avpts.getRawParameterValue("volume");
+    minMaxParameter = avpts.getRawParameterValue("cutoffFreq");
+    delayParameter = avpts.getRawParameterValue("delayTime");
+    upDownParameter = avpts.getRawParameterValue("direction");
 }
 
 AP3AudioProcessor::~AP3AudioProcessor()
 {
 }
 
+void AP3AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    synth.setCurrentPlaybackSampleRate(sampleRate);
+    // Use this method as the place to do any pre-playback
+    // initialisation that you need..
+    sr = sampleRate;
+    if (upDownParameter > 0) // if it is not the first choice
+    {
+        // some code here
+    }
+    delay.setDelayTime(sr * delayTimeInSeconds);
+}
+
+void AP3AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    juce::ScopedNoDenormals noDenormals;
+    auto totalNumInputChannels = getTotalNumInputChannels();
+    auto totalNumOutputChannels = getTotalNumOutputChannels();
+
+    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
+        buffer.clear(i, 0, buffer.getNumSamples());
+
+    // process entire block of samples
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    delay.setDelayTime(*delayParameter * sr);
+
+
+    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    {
+        auto* channelData = buffer.getWritePointer(channel);
+
+        // ..do something to the data...
+    }
+}
 //==============================================================================
 const juce::String AP3AudioProcessor::getName() const
 {
@@ -96,12 +139,7 @@ void AP3AudioProcessor::changeProgramName (int index, const juce::String& newNam
 }
 
 //==============================================================================
-void AP3AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    synth.setCurrentPlaybackSampleRate(sampleRate);
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-}
+
 
 void AP3AudioProcessor::releaseResources()
 {
@@ -135,37 +173,7 @@ bool AP3AudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) cons
 }
 #endif
 
-void AP3AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // process entire block of samples
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-
-        // ..do something to the data...
-    }
-}
 
 //==============================================================================
 bool AP3AudioProcessor::hasEditor() const
@@ -176,6 +184,7 @@ bool AP3AudioProcessor::hasEditor() const
 juce::AudioProcessorEditor* AP3AudioProcessor::createEditor()
 {
     return new AP3AudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -184,12 +193,19 @@ void AP3AudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
+    auto state = avpts.copyState();
+    std::unique_ptr < juce::XmlElement > xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
 void AP3AudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+// whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr < juce::XmlElement > xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState.get() != nullptr)
+        if (xmlState->hasTagName(avpts.state.getType()))
+            avpts.replaceState(juce::ValueTree::fromXml(*xmlState));
 }
 
 //==============================================================================
