@@ -44,37 +44,43 @@ AP3AudioProcessor::~AP3AudioProcessor()
 void AP3AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate);
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+
     sr = sampleRate;
     if (upDownParameter > 0) // if it is not the first choice
     {
         // some code here
     }
+
     delay.setDelayTime(sr * delayTimeInSeconds);
+
+    // smooth value setting
+    smoothVolume.reset(sampleRate, 1.0f);
+    smoothVolume.setCurrentAndTargetValue(0.0);
 }
 
 void AP3AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear(i, 0, buffer.getNumSamples());
+    int numSamples = buffer.getNumSamples();
+
+    float* left = buffer.getWritePointer(0);
+    float* right = buffer.getWritePointer(1);
 
     // process entire block of samples
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    synth.renderNextBlock(buffer, midiMessages, 0, numSamples);
 
-    delay.setDelayTime(*delayParameter * sr);
+    delay.setDelayTime(*delayParameter * sr); // delay
+    smoothVolume.setTargetVaue(*volumeParameter); // smooth value
 
-
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int i = 0; i < numSamples; i++)
     {
-        auto* channelData = buffer.getWritePointer(channel);
+        float gainVal = smoothVolume.getNextValue();
 
-        // ..do something to the data...
+        //left[i] =
+        //right[i] =
     }
+
 }
 //==============================================================================
 const juce::String AP3AudioProcessor::getName() const

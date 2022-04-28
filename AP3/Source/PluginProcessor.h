@@ -62,6 +62,9 @@ private:
     std::atomic<float>* delayParameter;
     std::atomic<float>* upDownParameter;
 
+    // smooth values
+    SmoothedValue<float> smoothVolume;
+
     // synthesiser class
     int voiceCount = 4;
     juce::Synthesiser synth;
