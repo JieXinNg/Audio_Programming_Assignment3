@@ -10,6 +10,8 @@
 #include "PluginEditor.h"
 
 //==============================================================================
+
+
 AP3AudioProcessor::AP3AudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
      : AudioProcessor (BusesProperties()
@@ -19,7 +21,10 @@ AP3AudioProcessor::AP3AudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+    avpts(*this, nullptr, "ParamTree", {
+    std::makeUnique<juce::AudioPrameterFloat>("release",, "Release Time", 0.0001, 5.0, 1.0)
+        })
 #endif
 {
 }
@@ -93,6 +98,7 @@ void AP3AudioProcessor::changeProgramName (int index, const juce::String& newNam
 //==============================================================================
 void AP3AudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    synth.setCurrentPlaybackSampleRate(sampleRate);
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
 }
@@ -143,6 +149,9 @@ void AP3AudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+
+    // process entire block of samples
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
     // This is the place where you'd normally do the guts of your plugin's
     // audio processing...
