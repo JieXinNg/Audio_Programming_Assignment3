@@ -29,17 +29,26 @@ AP3AudioProcessor::AP3AudioProcessor()
 , std::make_unique < juce::AudioParameterFloat >("cutoffFreq", "Cutoff Freq", 50.0f , 750.0f , 200.0f)
 , std::make_unique < juce::AudioParameterFloat >("delayTime", "Delay Time", 0.01f , 0.99f , 0.25f)
 , std::make_unique < juce::AudioParameterChoice >("direction", "Direction", juce::StringArray({"rampUp", "rampDown"}), 0)
-    })
+, std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f)
+        })
 {
     volumeParameter = avpts.getRawParameterValue("volume");
     minMaxParameter = avpts.getRawParameterValue("cutoffFreq");
     delayParameter = avpts.getRawParameterValue("delayTime");
     upDownParameter = avpts.getRawParameterValue("direction");
-    for (int i = 0; i < voiceCount; i++)
+    detuneParameter = avpts.getRawParameterValue("detune");
+
+    for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
-        synth.addVoice( new YourSynthVoice() );
+        synth.addVoice( new MySynthVoice() );
     }
     synth.addSound( new MySynthSound() );
+
+    for (int i = 0; i < voiceCount; i++) // set detune
+    {
+        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
+        v->setDetunePointer(detuneParameter);
+    }
 }
 
 AP3AudioProcessor::~AP3AudioProcessor()
@@ -50,17 +59,23 @@ void AP3AudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
     synth.setCurrentPlaybackSampleRate(sampleRate); // set the sample rate of synth
 
-    sr = sampleRate;
-    if (upDownParameter > 0) // if it is not the first choice
+    for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
     {
-        // some code here
+        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
+        v->init(sampleRate);
     }
 
-    delay.setDelayTime(sr * delayTimeInSeconds);
+    //sr = sampleRate;
+    //if (upDownParameter > 0) // if it is not the first choice
+    //{
+    //    // some code here
+    //}
 
-    // smooth value setting
-    smoothVolume.reset(sampleRate, 1.0f);
-    smoothVolume.setCurrentAndTargetValue(0.0);
+    //delay.setDelayTime(sr * delayTimeInSeconds);
+
+    //// smooth value setting
+    //smoothVolume.reset(sampleRate, 1.0f);
+    //smoothVolume.setCurrentAndTargetValue(0.0);
 }
 
 void AP3AudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)

@@ -62,12 +62,13 @@ private:
     std::atomic<float>* minMaxParameter;
     std::atomic<float>* delayParameter;
     std::atomic<float>* upDownParameter;
+    std::atomic<float>* detuneParameter;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
 
     // synthesiser class
-    int voiceCount = 4;
+    int voiceCount = 8;
     juce::Synthesiser synth;
 
     // sample rate
