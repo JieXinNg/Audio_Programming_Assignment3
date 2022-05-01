@@ -25,6 +25,9 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f)
         })
 {
+
+    detuneParameter = avpts.getRawParameterValue("detune");
+
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
         synth.addVoice( new MySynthVoice() );
@@ -34,7 +37,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     for (int i = 0; i < voiceCount; i++) // set detune
     {
         MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        //v->setDetunePointer(detuneParameter);
+        v->setDetunePointer(detuneParameter);
     }
 }
 
@@ -112,7 +115,7 @@ void MakeSoundAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
     for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
     {
         MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        //v->init(sampleRate);
+        v->init(sampleRate);
     }
 }
 

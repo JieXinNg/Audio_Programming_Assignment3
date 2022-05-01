@@ -30,15 +30,23 @@ public:
     {
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
-        /* detuneOsc.setSampleRate(sampleRate);
-        env.setSampleRate(sampleRate);*/
+        detuneOsc.setSampleRate(sampleRate);
+        env.setSampleRate(sampleRate);
 
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.1f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.5f; // vol level
-        //envParams.release = 1.0f; // fade out
-        //env.setParameters(envParams); // set the envelop parameters
+        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        envParams.attack = 0.1f; // fade in
+        envParams.decay = 0.25f;  // fade down to sustain level
+        envParams.sustain = 0.5f; // vol level
+        envParams.release = 1.0f; // fade out
+        env.setParameters(envParams); // set the envelop parameters
+    }
+
+    /**
+    * set detune amount
+    */
+    void setDetunePointer(std::atomic<float>* detuneInput)
+    {
+        detuneAmount = detuneInput;
     }
 
     //--------------------------------------------------------------------------
@@ -53,9 +61,12 @@ public:
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         playing = true;
-        //freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         // set freqeuncies 
-        //osc.setFrequency(freq);
+        osc.setFrequency(freq);
+
+        env.reset(); // can delete this if we dont want it to reset
+        env.noteOn();
     }
     //--------------------------------------------------------------------------
     /// Called when a MIDI noteOff message is received
@@ -67,8 +78,19 @@ public:
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
     {
-        clearCurrentNote();
-        playing = false;
+        //if (allowTailOff) // allow slow release of note
+        //{
+        //    env.noteOff();
+        //    ending = true;
+        //}
+        //else // shut off note
+        //{
+        //    clearCurrentNote();
+        //    playing = false;
+        //}
+
+        env.noteOff();
+        ending = true;
     }
 
     //--------------------------------------------------------------------------
@@ -86,15 +108,14 @@ public:
         if (playing) // check to see if this voice should be playing
         {
             //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
-            //detuneOsc.setFrequency(freq - *detuneAmount);
+            detuneOsc.setFrequency(freq - *detuneAmount);
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
-
                 float envVal = env.getNextSample();
 
-                float currentSample = random.nextFloat() * 2 - 1.0; //(osc.processTriangle()); // *0.5f; //* envVal; // apply envelop to oscillator + detuneOsc.process()
+                float currentSample = osc.process() * envVal; // apply envelop to oscillator + detuneOsc.process()
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -103,14 +124,14 @@ public:
                     outputBuffer.addSample(chan, sampleIndex, currentSample * 0.5);
                 }
 
-                /*if (ending)
+                if (ending)
                 {
                     if (envVal < 0.0001)
                     {
                         clearCurrentNote();
                         playing = false;
                     }
-                }*/
+                }
             }
         }
     }
@@ -134,15 +155,13 @@ private:
     //--------------------------------------------------------------------------
     bool playing = false; // set default value for playing to be false
     bool ending = false; // bool to determine the moment the note is released
-    int voiceCount = 8; // set the voice count of our synthesiser
     juce::ADSR env; // envelope for synthesiser
 
-    juce::Random random; //a random object for use in our test noise function
     std::atomic<float>* releaseParam;
 
     // Oscillators
-    Oscillator osc;
-    //TriOsc detuneOsc;
+    TriOsc osc;
+    TriOsc detuneOsc;
 
     std::atomic<float>* detuneAmount;
     float freq;
