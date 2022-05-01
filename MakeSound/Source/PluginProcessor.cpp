@@ -111,8 +111,7 @@ void MakeSoundAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBl
 
     for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
     {
-        //MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        MySynthVoice* v = dynamic_cast <MySynthVoice*>(synth.getVoice(i));
+        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
         //v->init(sampleRate);
     }
 }
