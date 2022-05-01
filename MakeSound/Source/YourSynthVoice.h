@@ -17,7 +17,13 @@
 class MySynthSound : public juce::SynthesiserSound
 {
 public:
-    bool appliesToNote(int) override { return true; }
+    bool appliesToNote(int noteIn) override 
+    { 
+        if (noteIn <= 60)
+            return true;
+        else
+            return false;
+    }
     //--------------------------------------------------------------------------
     bool appliesToChannel(int) override { return true; }
 };
