@@ -22,10 +22,11 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
                        ),
 #endif
     avpts(*this, nullptr, "ParamTreeIdentifier", {
+    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.5f) ,
     std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f)
         })
 {
-
+    volumeParameter = avpts.getRawParameterValue("volume");
     detuneParameter = avpts.getRawParameterValue("detune");
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
@@ -38,11 +39,38 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     {
         MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
         v->setDetunePointer(detuneParameter);
+        v->setVolumePointer(volumeParameter);
     }
 }
 
 MakeSoundAudioProcessor::~MakeSoundAudioProcessor()
 {
+}
+
+void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    // smooth value setting
+    smoothVolume.reset(sampleRate, 1.0f);
+    smoothVolume.setCurrentAndTargetValue(0.0);
+
+    synth.setCurrentPlaybackSampleRate(sampleRate); // set the sample rate of synth
+
+    for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
+    {
+        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
+        v->init(sampleRate);
+    }
+}
+
+void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
+{
+    juce::ScopedNoDenormals noDenormals;
+    // process entire block of samples for synths
+
+    //smoothVolume.setTargetValue(*volumeParameter); // smooth value
+    //float gainVal = smoothVolume.getNextValue();
+    
+    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -108,16 +136,6 @@ void MakeSoundAudioProcessor::changeProgramName (int index, const juce::String& 
 }
 
 //==============================================================================
-void MakeSoundAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
-{
-    synth.setCurrentPlaybackSampleRate(sampleRate); // set the sample rate of synth
-
-    for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
-    {
-        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        v->init(sampleRate);
-    }
-}
 
 void MakeSoundAudioProcessor::releaseResources()
 {
@@ -150,13 +168,6 @@ bool MakeSoundAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts
   #endif
 }
 #endif
-
-void MakeSoundAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
-{
-    juce::ScopedNoDenormals noDenormals;
-    // process entire block of samples for synths
-    synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-}
 
 //==============================================================================
 bool MakeSoundAudioProcessor::hasEditor() const

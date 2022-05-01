@@ -61,7 +61,11 @@ private:
 
     juce::AudioProcessorValueTreeState avpts;
     // parameters 
+    std::atomic<float>* volumeParameter;
     std::atomic<float>* detuneParameter;
+
+    // smooth values
+    juce::SmoothedValue<float> smoothVolume;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)
 };

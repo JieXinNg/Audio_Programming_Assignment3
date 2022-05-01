@@ -55,6 +55,14 @@ public:
         detuneAmount = detuneInput;
     }
 
+    /**
+    * set volume
+    */
+    void setVolumePointer(std::atomic<float>* volumeInput)
+    {
+        volume = volumeInput;
+    }
+
     //--------------------------------------------------------------------------
     /**
      What should be done when a note starts
@@ -84,19 +92,16 @@ public:
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
     {
-        //if (allowTailOff) // allow slow release of note
-        //{
-        //    env.noteOff();
-        //    ending = true;
-        //}
-        //else // shut off note
-        //{
-        //    clearCurrentNote();
-        //    playing = false;
-        //}
-
-        env.noteOff();
-        ending = true;
+        if (allowTailOff) // allow slow release of note
+        {
+            env.noteOff();
+            ending = true;
+        }
+        else // shut off note
+        {
+            clearCurrentNote();
+            playing = false;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -121,13 +126,13 @@ public:
             {
                 float envVal = env.getNextSample();
 
-                float currentSample = osc.process() * envVal; // apply envelop to oscillator + detuneOsc.process()
+                float currentSample = (osc.process() + detuneOsc.process()) * envVal; // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
                     // The output sample is scaled by 0.2 so that it is not too loud by default
-                    outputBuffer.addSample(chan, sampleIndex, currentSample * 0.5);
+                    outputBuffer.addSample(chan, sampleIndex, currentSample * *volume);
                 }
 
                 if (ending)
@@ -170,5 +175,6 @@ private:
     TriOsc detuneOsc;
 
     std::atomic<float>* detuneAmount;
+    std::atomic<float>* volume;
     float freq;
 };
