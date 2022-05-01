@@ -9,19 +9,17 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "Delay.h"
 #include "YourSynthVoice.h"
-#include "TMSampler.h"
 
 //==============================================================================
 /**
 */
-class AP3AudioProcessor  : public juce::AudioProcessor
+class MakeSoundAudioProcessor  : public juce::AudioProcessor
 {
 public:
     //==============================================================================
-    AP3AudioProcessor();
-    ~AP3AudioProcessor() override;
+    MakeSoundAudioProcessor();
+    ~MakeSoundAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -57,28 +55,13 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    juce::AudioProcessorValueTreeState avpts;
-    // parameters 
-    std::atomic<float>* volumeParameter;
-    std::atomic<float>* minMaxParameter;
-    std::atomic<float>* delayParameter;
-    std::atomic<float>* upDownParameter;
-    std::atomic<float>* detuneParameter;
-
-    // smooth values
-    juce::SmoothedValue<float> smoothVolume;
-
     // synthesiser class
     int voiceCount = 8;
     juce::Synthesiser synth;
 
-    // sample rate
-    float sr;
-    Delay delay;
-    float delayTimeInSeconds = 0.25f;
-
-    // TM sampler
-    TMSampler sampler;
+    juce::AudioProcessorValueTreeState avpts;
+    // parameters 
+    std::atomic<float>* detuneParameter;
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AP3AudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)
 };
