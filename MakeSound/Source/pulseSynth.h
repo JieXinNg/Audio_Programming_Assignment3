@@ -1,26 +1,29 @@
 /*
   ==============================================================================
 
-    YourSynthVoice.h
-    Created: 7 Mar 2020 4:27:57pm
+    pulseSynth.h
+    Created: 2 May 2022 5:00:37pm
+    Author:  s1859154
 
   ==============================================================================
 */
 
 #pragma once
+
 #include <JuceHeader.h>
 #include "Oscillator.h"
 #include <math.h>
+#include "KeySignatures.h"
 
 // ===========================
 // ===========================
 // SOUND
-class MySynthSound : public juce::SynthesiserSound
+class pulseSynthSound : public juce::SynthesiserSound
 {
 public:
-    bool appliesToNote(int noteIn) override 
-    { 
-        if (noteIn <= 80) // change value here
+    bool appliesToNote(int noteIn) override
+    {
+        if (noteIn > 80) // change value here
             return true;
         else
             return false;
@@ -29,33 +32,46 @@ public:
     bool appliesToChannel(int) override { return true; }
 };
 
-class MySynthVoice : public juce::SynthesiserVoice
+class pulseSynthVoice : public juce::SynthesiserVoice
 {
 public:
-    MySynthVoice() {}
+    pulseSynthVoice() {}
+
+    /**
+    * set sample rate and envelop
+    */
     void init(float sampleRate)
     {
+        // get a copy of the sample rate value
+        sr = sampleRate;
+        //key.setKey(60, sr, _mode, 2); // might not need this line
+
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
-        detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
         juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
         envParams.attack = 0.1f; // fade in
         envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.5f; // vol level
+        envParams.sustain = 0.7f; // vol level
         envParams.release = 0.2f; // fade out
         env.setParameters(envParams); // set the envelop parameters
-        
-        setReverbParams();
     }
 
     /**
-    * set detune amount
+    * set mode / key, must be called before init
     */
-    void setDetunePointer(std::atomic<float>* detuneInput)
+    void setMode(std::atomic<float>* mode)
     {
-        detuneAmount = detuneInput;
+        if (*mode == 0)
+        {
+            _mode = "major";
+        }
+
+        if (*mode == 1)
+        {
+            _mode = "minor";
+        }
     }
 
     /**
@@ -66,13 +82,12 @@ public:
         volume = volumeInput;
     }
 
-    void setReverbParams()
+    /**
+    * 
+    */
+    void setPulseSpeed(std::atomic<float>* phasorFreq)
     {
-        reverbParams.dryLevel = 0.8f;
-        reverbParams.wetLevel = 0.3f;
-        reverbParams.roomSize = 0.99f;
-        reverb.setParameters(reverbParams);
-        //reverb.reset();
+        key.setPulseSpeed(*phasorFreq); // not working
     }
 
     //--------------------------------------------------------------------------
@@ -86,23 +101,14 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        float vel = (float) velocity * 20.0;
-        velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0;
-        DBG(velocityDetune);
+        float vel = (int) velocity * 1.0 + 1;
+
         playing = true;
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+
         // set freqeuncies 
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
         osc.setFrequency(freq);
-
-        DBG(1 / (float) pow((vel + 1), 1));
-
-        // create different envelops based on the velocity of the note
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 0.2f; // fade in
-        envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.5f; // vol level
-        envParams.release = 1 / (float) pow((vel + 1), 1); // fade out
-        env.setParameters(envParams); // set the envelop parameters
+        key.setKey(midiNoteNumber, sr, _mode, vel);
 
         env.reset(); // can delete this if we dont want it to reset
         env.noteOn();
@@ -143,25 +149,22 @@ public:
     {
         if (playing) // check to see if this voice should be playing
         {
-            //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
-            detuneOsc.setFrequency(freq - velocityDetune); // velocityDetune *detuneAmount
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
+                
+                key.changeFreq(); // change freq every one second
 
-                float currentSample = (osc.process() + detuneOsc.process()) * envVal; // apply envelop to oscillator 
+                float currentSample = key.randomNoteGenerator() *envVal; // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
-                {                    
-                    outputBuffer.addSample(chan, sampleIndex, *volume * currentSample);
-                    //reverb.processMono(outputBuffer.getWritePointer(chan), currentSample); // dont hear a difference
+                {
+                    // The output sample is scaled by 0.2 so that it is not too loud by default
+                    outputBuffer.addSample(chan, sampleIndex, currentSample * *volume);
                 }
-
-                // add reverb, does not work
-                 reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
 
                 if (ending)
                 {
@@ -183,11 +186,11 @@ public:
      Can this voice play a sound. I wouldn't worry about this for the time being
 
      @param sound a juce::SynthesiserSound* base class pointer
-     @return sound cast as a pointer to an instance of YourSynthSound
+     @return sound cast as a pointer to an instance of pulseSynthSound
      */
     bool canPlaySound(juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<MySynthSound*> (sound) != nullptr;
+        return dynamic_cast<pulseSynthSound*> (sound) != nullptr;
     }
     //--------------------------------------------------------------------------
 private:
@@ -199,16 +202,14 @@ private:
     std::atomic<float>* releaseParam;
 
     // Oscillators
-    TriOsc osc;
-    TriOsc detuneOsc;
+    SineOsc osc;
 
-    std::atomic<float>* detuneAmount;
     std::atomic<float>* volume;
     float freq;
-    float velocityDetune;
+    float sr;
+    std::string _mode;
 
-    // effects
-    juce::Reverb reverb;
-    juce::Reverb::Parameters reverbParams;
+    // used to set the key of sequencer 
+    KeySignatures key;
 
 };

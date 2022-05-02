@@ -10,6 +10,7 @@
 
 #include <JuceHeader.h>
 #include "YourSynthVoice.h"
+#include "pulseSynth.h"
 
 //==============================================================================
 /**
@@ -57,15 +58,19 @@ public:
 private:
     // synthesiser class
     int voiceCount = 8;
+    juce::Synthesiser synthPulse;
     juce::Synthesiser synth;
-
+    
     juce::AudioProcessorValueTreeState avpts;
     // parameters 
     std::atomic<float>* volumeParameter;
     std::atomic<float>* detuneParameter;
+    std::atomic<float>* modeParameter;
+    std::atomic<float>* pulseSpeedParameter;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)
 };
