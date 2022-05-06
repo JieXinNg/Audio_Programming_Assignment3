@@ -69,7 +69,7 @@ public:
 		sinePulse.setFrequency(pulseFreq);
 		sinePulse.setPower(pulsePower);
 		phasor.setSampleRate(_sr);
-		//phasor.setFrequency(0.5);
+		phasor.setFrequency(0.5);
 		//lfo.setSampleRate(_sr);
 		//lfo.setFrequency(0.5);
 

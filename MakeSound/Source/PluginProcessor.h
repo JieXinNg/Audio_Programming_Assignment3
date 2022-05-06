@@ -56,6 +56,9 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    // audio effects
+    juce::Reverb reverb;
+
     // synthesiser class
     int voiceCount = 8;
     juce::Synthesiser synthPulse;
@@ -67,6 +70,7 @@ private:
     std::atomic<float>* detuneParameter;
     std::atomic<float>* modeParameter;
     std::atomic<float>* pulseSpeedParameter;
+    std::atomic<float>* reverbParameter;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;

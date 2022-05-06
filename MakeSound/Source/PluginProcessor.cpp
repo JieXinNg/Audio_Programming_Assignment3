@@ -25,13 +25,15 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.3f) ,
     std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f) ,
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({"Major", "Minor"}), 0) ,
-    std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 2.0f , 0.5f)
+    std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 2.0f , 0.5f),
+    std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
     detuneParameter = avpts.getRawParameterValue("detune");
     modeParameter = avpts.getRawParameterValue("mode");
     pulseSpeedParameter = avpts.getRawParameterValue("pulseSpeed");
+    reverbParameter = avpts.getRawParameterValue("reverbSize");
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
@@ -50,7 +52,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         point->setMode(modeParameter);
         point->setVolumePointer(volumeParameter);
         point->setMode(modeParameter);
-        point->setPulseSpeed(pulseSpeedParameter);
+        //point->setPulseSpeed(pulseSpeedParameter);
     }
 }
 
@@ -75,6 +77,15 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
         point->init(sampleRate);
     }
+
+    // set reverb parameters 
+    juce::Reverb::Parameters reverbParams;
+    reverbParams.dryLevel = 0.8f;
+    reverbParams.wetLevel = 0.3f;
+    reverbParams.roomSize = *reverbParameter;
+    reverb.setParameters(reverbParams);
+    reverb.reset();
+
 }
 
 void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
@@ -84,8 +95,14 @@ void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
 
     //smoothVolume.setTargetValue(*volumeParameter); // smooth value
     //float gainVal = smoothVolume.getNextValue();
+
+    float* left = buffer.getWritePointer(0); // access the left channel
+    float* right = buffer.getWritePointer(1); // access the right channel
+
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synthPulse.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    reverb.processStereo(left, right, buffer.getNumSamples());
 }
 
 //==============================================================================
