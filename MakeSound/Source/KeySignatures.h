@@ -42,15 +42,20 @@
 */
 class KeySignatures {
 public:
+	std::string mode;
+	std::string modeList[2] = { "Major" , "Minor" };
 
-	void setMode(int _baseNote, std::string _mode, int numOctaves)
+	void setMode(int _baseNote, float _mode, int numOctaves)
 	{
 
-		// set the mode to major if some other string is passed
-		if (_mode != "major" && _mode != "minor")
-		{
-			_mode = "major";
-		}
+		//// set the mode to major if some other string is passed
+		//if (_mode != 0 && _mode != 1)
+		//{
+		//	mode = "Major";
+		//}
+
+		mode = modeList[(int) _mode];
+
 
 		float baseNote = _baseNote;           // *** please change this, set the base note 
 		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
@@ -78,18 +83,18 @@ public:
 		// create dictionary to map "major" and "minor" to the correct notes
 		// further modes can be mapped here rather than using if statements to check the input
 		std::map<std::string, std::vector<int>> keyDictionary;
-		keyDictionary["major"] = major;
-		keyDictionary["minor"] = minor;
+		keyDictionary["Major"] = major;
+		keyDictionary["Minor"] = minor;
 
 		// loop to select the correct mode and generate a vector to hold all the notes
 		for (int i = 0; i < numNotes; i++)
 		{
-			std::vector<int> a = keyDictionary.at(_mode);           // select the mode at keyDictionary
+			std::vector<int> a = keyDictionary.at(mode);           // select the mode at keyDictionary
 			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]); // convert each note from midi to frequency
 			notes.push_back(_note);                                 // add the frequency value to notes (vector)
 		}
 
-		sineOsc.setFrequency(getNotes(0));                          // set the default frequency
+		//sineOsc.setFrequency(getNotes(0));                          // set the default frequency
 	}
 	/**
 	* generate the possible notes based on the key
@@ -99,13 +104,9 @@ public:
 	* @param _mode (std::string) set the mode of the key "major" or "minor"
 	* @param numOctaves (int) set the number of octaves to generate the possible notes
 	*/
-	void setKey(int _baseNote, float _sr, std::string _mode, int numOctaves) 
+	void setKey(int _baseNote, float _sr, float _mode, int numOctaves) 
 	{
-		// set the mode to major if some other string is passed
-		if (_mode != "major" && _mode != "minor") 
-		{
-			_mode = "major";
-		}
+		mode = modeList[(int)_mode];
 		
 		float baseNote = _baseNote;           // set the base note 
 		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
@@ -146,13 +147,13 @@ public:
 		// create dictionary to map "major" and "minor" to the correct notes
 		// further modes can be mapped here rather than using if statements to check the input
 		std::map<std::string, std::vector<int>> keyDictionary; 
-		keyDictionary["major"] = major;
-		keyDictionary["minor"] = minor;
+		keyDictionary["Major"] = major;
+		keyDictionary["Minor"] = minor;
 
 		// loop to select the correct mode and generate a vector to hold all the notes
 		for (int i = 0; i < numNotes; i++)
 		{
-			std::vector<int> a = keyDictionary.at(_mode);           // select the mode at keyDictionary
+			std::vector<int> a = keyDictionary.at(mode);           // select the mode at keyDictionary
 			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]); // convert each note from midi to frequency
 			notes.push_back(_note);                                 // add the frequency value to notes (vector)
 		}
@@ -206,7 +207,6 @@ public:
 	void changeFreq()
 	{
 		//phasor.setFrequency(lfo.process() * 0.5);
-		DBG(phasor.frequency);
 
 		if ((1 - phasor.process()) <= phasor.getPhaseDelta()) // change frequency when the phase is nearing 1 
 		{
@@ -231,7 +231,7 @@ private:
 	// variables to be set in setKey()
 	int key;                        // midi value
 	float sampleRate;
-	std::string mode = "major";     
+	//std::string mode;     
 	int numNotes = 7;               // number of notes according to number of octaves set in setKey
 
 	// variables to be set in setSinePulseParams

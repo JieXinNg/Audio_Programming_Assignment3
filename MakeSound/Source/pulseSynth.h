@@ -63,15 +63,16 @@ public:
     */
     void setMode(std::atomic<float>* mode)
     {
-        if (*mode == 0)
-        {
-            _mode = "major";
-        }
+        _mode = mode;
+        //if (*mode == 0)
+        //{
+        //    _mode; // "Major";
+        //}
 
-        if (*mode == 1)
-        {
-            _mode = "minor";
-        }
+        //if (*mode == 1)
+        //{
+        //    _mode = "Minor";
+        //}
     }
 
     /**
@@ -103,16 +104,15 @@ public:
     {
         // get local reference 
         baseNote = midiNoteNumber;
+        float vel = (int) velocity * 1.0 + 1;
+        numOctaves = vel;
 
         playing = true;
-
-
-        float vel = (int) velocity * 1.0 + 1;     
 
         // set freqeuncies 
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
         osc.setFrequency(freq);
-        key.setKey(baseNote, sr, _mode, vel);
+        key.setKey(baseNote, sr, *_mode, numOctaves);
 
 
         // envelopes
@@ -160,7 +160,8 @@ public:
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
-                
+                             
+                key.setMode(baseNote, *_mode, numOctaves); // change the mode of pulse whenever the user wishes to
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
 
@@ -214,11 +215,13 @@ private:
     std::atomic<float>* volume;
     float freq;
     float sr;
-    std::string _mode;
+    //std::string _mode;
+    std::atomic < float >* _mode;
 
     // used to set the key of sequencer 
     KeySignatures key;
     int baseNote;
+    int numOctaves;
 
     // pulse speed
     std::atomic<float>* pulseSpeed;
