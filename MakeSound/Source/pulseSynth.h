@@ -87,7 +87,7 @@ public:
     */
     void setPulseSpeed(std::atomic<float>* phasorFreq)
     {
-        key.setPulseSpeed(*phasorFreq); // not working
+        pulseSpeed = phasorFreq;
     }
 
     //--------------------------------------------------------------------------
@@ -101,16 +101,22 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        float vel = (int) velocity * 1.0 + 1;
+        // get local reference 
+        baseNote = midiNoteNumber;
 
         playing = true;
+
+
+        float vel = (int) velocity * 1.0 + 1;     
 
         // set freqeuncies 
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
         osc.setFrequency(freq);
-        key.setKey(midiNoteNumber, sr, _mode, vel);
+        key.setKey(baseNote, sr, _mode, vel);
 
-        env.reset(); // can delete this if we dont want it to reset
+
+        // envelopes
+        env.reset(); 
         env.noteOn();
     }
     //--------------------------------------------------------------------------
@@ -155,6 +161,7 @@ public:
             {
                 float envVal = env.getNextSample();
                 
+                key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
 
                 float currentSample = key.randomNoteGenerator() *envVal; // apply envelop to oscillator 
@@ -211,5 +218,9 @@ private:
 
     // used to set the key of sequencer 
     KeySignatures key;
+    int baseNote;
+
+    // pulse speed
+    std::atomic<float>* pulseSpeed;
 
 };

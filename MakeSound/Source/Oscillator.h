@@ -17,6 +17,7 @@
 class Oscillator
 {
 public:
+    float frequency;
 
     /**
      * update the phase and output signal
@@ -84,7 +85,7 @@ public:
     }
 
 protected:
-    float frequency;
+    //float frequency;
     float sampleRate;
     float phase = 0.0f;
     float phaseDelta;

@@ -42,6 +42,55 @@
 */
 class KeySignatures {
 public:
+
+	void setMode(int _baseNote, std::string _mode, int numOctaves)
+	{
+
+		// set the mode to major if some other string is passed
+		if (_mode != "major" && _mode != "minor")
+		{
+			_mode = "major";
+		}
+
+		float baseNote = _baseNote;           // *** please change this, set the base note 
+		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
+
+		// created vectors which carries the values of semitones for each note from the base note 
+		// further modes can be added here
+		std::vector<int> major = { 0, 2, 4, 5, 7, 9, 11 };
+		std::vector<int> minor = { 0, 2, 3, 5, 7, 8, 10 };
+
+		if (numOctaves > 1) // add notes if there is more than one octave
+		{
+			// loop to generate all the possible notes
+			for (int i = 1; i < (numOctaves + 1); i++)
+			{
+				for (int x = 0; x < 7; x++) // loop through each note in one octave
+				{
+					// append the vectors to cover the number of octaves (numOctaves)
+					major.push_back(major[x] + 12 * i);
+					minor.push_back(minor[x] + 12 * i);
+
+				}
+			}
+		}
+
+		// create dictionary to map "major" and "minor" to the correct notes
+		// further modes can be mapped here rather than using if statements to check the input
+		std::map<std::string, std::vector<int>> keyDictionary;
+		keyDictionary["major"] = major;
+		keyDictionary["minor"] = minor;
+
+		// loop to select the correct mode and generate a vector to hold all the notes
+		for (int i = 0; i < numNotes; i++)
+		{
+			std::vector<int> a = keyDictionary.at(_mode);           // select the mode at keyDictionary
+			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]); // convert each note from midi to frequency
+			notes.push_back(_note);                                 // add the frequency value to notes (vector)
+		}
+
+		sineOsc.setFrequency(getNotes(0));                          // set the default frequency
+	}
 	/**
 	* generate the possible notes based on the key
 	* 
@@ -70,6 +119,7 @@ public:
 		sinePulse.setPower(pulsePower);
 		phasor.setSampleRate(_sr);
 		phasor.setFrequency(0.5);
+
 		//lfo.setSampleRate(_sr);
 		//lfo.setFrequency(0.5);
 
@@ -156,6 +206,7 @@ public:
 	void changeFreq()
 	{
 		//phasor.setFrequency(lfo.process() * 0.5);
+		DBG(phasor.frequency);
 
 		if ((1 - phasor.process()) <= phasor.getPhaseDelta()) // change frequency when the phase is nearing 1 
 		{
@@ -193,6 +244,7 @@ private:
 	PhaseModulationSineOsc sineOsc; // sine oscillator to generate audio
 	SineOsc sinePulse;              // sine oscillator to modulate the volume to simulate pulse
 	Oscillator phasor;              // phasor to check the time to change frequency
+
 	//SineOsc lfo;					// lfo to modulate the phasor frequency // not working now
 
 	juce::Random random;            // random is called to select the notes to be played
