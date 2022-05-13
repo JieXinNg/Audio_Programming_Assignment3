@@ -44,7 +44,7 @@ public:
         envParams.attack = 0.1f; // fade in
         envParams.decay = 0.25f;  // fade down to sustain level
         envParams.sustain = 0.5f; // vol level
-        envParams.release = 0.2f; // fade out
+        envParams.release = 0.5f; // fade out
         env.setParameters(envParams); // set the envelop parameters
         
         setReverbParams();

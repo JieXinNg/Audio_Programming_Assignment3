@@ -66,8 +66,8 @@ public:
 		phasor.setSampleRate(_sr);
 		phasor.setFrequency(0.5);
 
-		//lfo.setSampleRate(_sr);
-		//lfo.setFrequency(0.5);
+		lfo.setSampleRate(_sr);
+		lfo.setFrequency(0.1);
 	}
 
 	void generateNotesForModes(int numOctaves)
@@ -146,6 +146,14 @@ public:
 	}
 
 	/**
+	*
+	*/
+	void setLfofreq(float lfoFreq)
+	{
+		lfo.setFrequency(lfoFreq);
+	}
+
+	/**
 	* set the frequency and power of sine for sinePulse - has to be called before setKey
 	* 
 	* @param _pulseFreq frequency of pulse
@@ -173,7 +181,7 @@ public:
 		}
 
 		float output = sineOsc.process();
-		return output * pulseVolume;
+		return output * pulseVolume * lfo.process() * 0.5f; 
 	}
 
 	/**
@@ -220,21 +228,9 @@ private:
 	SineOsc sinePulse;              // sine oscillator to modulate the volume to simulate pulse
 	Oscillator phasor;              // phasor to check the time to change frequency
 
-	//SineOsc lfo;					// lfo to modulate the phasor frequency // not working now
+	SineOsc lfo;					// lfo to modulate the phasor frequency // not working now
 
 	juce::Random random;            // random is called to select the notes to be played
-
-
-	//// created vectors which carries the values of semitones for each note from the base note 
-	//// further modes can be added here
-	//std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
-	//std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
-	//std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
-	//std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
-	//std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
-	//std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
-	//std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
-
 
 	// create dictionary to map the selected modes to the correct notes
 	// further modes can be mapped here rather than using if statements to check the input

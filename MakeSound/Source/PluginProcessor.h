@@ -71,6 +71,8 @@ private:
     std::atomic<float>* modeParameter;
     std::atomic<float>* pulseSpeedParameter;
     std::atomic<float>* reverbParameter;
+    std::atomic<float>* sinePulseFreqParameter;
+    std::atomic<float>* sinePulsePowerParameter;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;

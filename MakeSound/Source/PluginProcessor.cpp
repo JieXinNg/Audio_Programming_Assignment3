@@ -22,11 +22,13 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
                        ),
 #endif
     avpts(*this, nullptr, "ParamTreeIdentifier", {
-    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.3f) ,
+    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.1f) ,
     std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f) ,
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
-    std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f)
+    std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
+    std::make_unique < juce::AudioParameterFloat >("sinePulseFreq", "Sine pulse freq", 0.1f , 2.0f , 0.1f),
+    std::make_unique < juce::AudioParameterInt >("sinePulsePower", "Sine Power", 1 , 21 , 9)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
@@ -34,6 +36,8 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     modeParameter = avpts.getRawParameterValue("mode");
     pulseSpeedParameter = avpts.getRawParameterValue("pulseSpeed");
     reverbParameter = avpts.getRawParameterValue("reverbSize");
+    sinePulseFreqParameter = avpts.getRawParameterValue("sinePulseFreq");
+    sinePulsePowerParameter = avpts.getRawParameterValue("sinePulsePower");
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
@@ -53,8 +57,8 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         point->setMode(modeParameter);
         point->setVolumePointer(volumeParameter);
         point->setMode(modeParameter);
-        point->setPulseSpeed(pulseSpeedParameter);
-        //point->setPulseSpeed(pulseSpeedParameter);
+        point->setPulseSpeed(pulseSpeedParameter, sinePulseFreqParameter, sinePulsePowerParameter);
+
     }
 }
 

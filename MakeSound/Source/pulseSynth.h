@@ -77,9 +77,12 @@ public:
     /**
     * 
     */
-    void setPulseSpeed(std::atomic<float>* phasorFreq)
+    void setPulseSpeed(std::atomic<float>* _pulseSpeed, std::atomic<float>* _sineFreq, std::atomic<float>* _sinePower)
     {
-        pulseSpeed = phasorFreq;
+        pulseSpeed = _pulseSpeed;
+        sineFreq = _sineFreq;
+        sinePower = _sinePower;
+
     }
 
     //--------------------------------------------------------------------------
@@ -95,8 +98,8 @@ public:
     {
         // get local reference of the base note
         baseNote = midiNoteNumber;
-        float vel = (int) velocity * 1.0 + 1;
-        numOctaves = vel;
+        float numOctaves = (int) velocity * 1.0 + 1;
+        float vel = velocity;
 
         playing = true;
 
@@ -106,7 +109,8 @@ public:
         key.setOscillatorParams(sr);
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, *_mode, numOctaves);
-
+        key.setLfofreq(vel);
+        DBG(vel);
 
         // envelopes
         env.reset(); 
@@ -155,6 +159,7 @@ public:
                 float envVal = env.getNextSample();
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
+                key.setSinePulseParams(*sineFreq, *sinePower);
 
                 float currentSample = key.randomNoteGenerator() *envVal; // apply envelop to oscillator 
 
@@ -214,7 +219,9 @@ private:
     int baseNote;
     int numOctaves;
 
-    // pulse speed
+    // pulse speed, sine pulse freq, sine power
     std::atomic<float>* pulseSpeed;
+    std::atomic<float>* sineFreq;
+    std::atomic<float>* sinePower;
 
 };
