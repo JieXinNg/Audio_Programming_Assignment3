@@ -54,7 +54,7 @@ public:
         envParams.attack = 0.1f; // fade in
         envParams.decay = 0.25f;  // fade down to sustain level
         envParams.sustain = 0.7f; // vol level
-        envParams.release = 0.2f; // fade out
+        envParams.release = 3.0f; // fade out
         env.setParameters(envParams); // set the envelop parameters
     }
 
@@ -97,9 +97,10 @@ public:
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         // get local reference of the base note
-        baseNote = midiNoteNumber;
-        float numOctaves = (int) velocity * 1.0 + 1;
-        float vel = velocity;
+        baseNote = midiNoteNumber - 24;
+        float numOctaves = ceil(velocity * 3) + 1;
+        float lfoFrequency = velocity;
+        float envelopeRelease = velocity * 12.0f;
 
         playing = true;
 
@@ -109,10 +110,16 @@ public:
         key.setOscillatorParams(sr);
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, *_mode, numOctaves);
-        key.setLfofreq(vel);
-        DBG(vel);
+        key.setLfofreq(lfoFrequency);
+        DBG(numOctaves);
 
         // envelopes
+        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        envParams.attack = 0.1f; // fade in
+        envParams.decay = 0.25f;  // fade down to sustain level
+        envParams.sustain = 0.7f; // vol level
+        envParams.release = envelopeRelease; // fade out
+        env.setParameters(envParams); // set the envelop parameters
         env.reset(); 
         env.noteOn();
     }

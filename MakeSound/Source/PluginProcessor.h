@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "YourSynthVoice.h"
 #include "pulseSynth.h"
+#include "SourceCode.h"
 
 //==============================================================================
 /**

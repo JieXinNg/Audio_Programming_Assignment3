@@ -1,8 +1,9 @@
 /*
   ==============================================================================
 
-    YourSynthVoice.h
-    Created: 7 Mar 2020 4:27:57pm
+    SourceCode.h
+    Created: 13 May 2022 
+    Author:  s1859154
 
   ==============================================================================
 */
@@ -15,11 +16,11 @@
 // ===========================
 // ===========================
 // SOUND
-class MySynthSound : public juce::SynthesiserSound
+class SecondSynth : public juce::SynthesiserSound
 {
 public:
-    bool appliesToNote(int noteIn) override 
-    { 
+    bool appliesToNote(int noteIn) override
+    {
         if (noteIn <= 60) // change value here
             return true;
         else
@@ -29,10 +30,10 @@ public:
     bool appliesToChannel(int) override { return true; }
 };
 
-class MySynthVoice : public juce::SynthesiserVoice
+class SecondSynthVoice : public juce::SynthesiserVoice
 {
 public:
-    MySynthVoice() {}
+    SecondSynthVoice() {}
     void init(float sampleRate)
     {
         // set sample rate for oscillators and envelop
@@ -46,8 +47,7 @@ public:
         //envParams.sustain = 0.7f; // vol level
         //envParams.release = 0.5f; // fade out
         //env.setParameters(envParams); // set the envelop parameters
-        
-        setReverbParams();
+
     }
 
     /**
@@ -66,14 +66,6 @@ public:
         volume = volumeInput;
     }
 
-    void setReverbParams()
-    {
-        reverbParams.dryLevel = 0.8f;
-        reverbParams.wetLevel = 0.3f;
-        reverbParams.roomSize = 0.99f;
-        reverb.setParameters(reverbParams);
-        //reverb.reset();
-    }
 
     //--------------------------------------------------------------------------
     /**
@@ -86,24 +78,13 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        float vel = (float) velocity * 20.0;
-        velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0;
+        float vel = (float)velocity * 20.0;
+        velocityDetune = (float)exp(0.2 * vel) / (float)exp(4.0) * 20.0;
         float envelopeRelease = velocity * 12.0f;
-        DBG(envelopeRelease);
         playing = true;
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
         // set freqeuncies 
         osc.setFrequency(freq);
-
-        //DBG(1 / (float) pow((vel + 1), 1));
-
-        //// create different envelops based on the velocity of the note
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.2f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.5f; // vol level
-        //envParams.release = 1 / (float) pow((vel + 1), 1); // fade out
-        //env.setParameters(envParams); // set the envelop parameters
 
         // envelopes
         juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
@@ -159,17 +140,19 @@ public:
             {
                 float envVal = env.getNextSample();
 
-                float currentSample = (osc.process() + detuneOsc.process()) * envVal; // apply envelop to oscillator 
+                osc.setFrequency(envVal);
+
+                float currentSample = (osc.process()) * envVal; // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
-                {                    
+                {
                     outputBuffer.addSample(chan, sampleIndex, *volume * currentSample);
                     //reverb.processMono(outputBuffer.getWritePointer(chan), currentSample); // dont hear a difference
                 }
 
                 // add reverb, does not work
-                 reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
+                reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
 
                 if (ending)
                 {
@@ -195,7 +178,7 @@ public:
      */
     bool canPlaySound(juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<MySynthSound*> (sound) != nullptr;
+        return dynamic_cast<SecondSynth*> (sound) != nullptr;
     }
     //--------------------------------------------------------------------------
 private:
