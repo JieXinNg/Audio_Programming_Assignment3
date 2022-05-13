@@ -20,7 +20,7 @@ class MySynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override 
     { 
-        if (noteIn <= 80) // change value here
+        if (noteIn <= 60) // change value here
             return true;
         else
             return false;

@@ -23,7 +23,7 @@ class pulseSynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn > 80) // change value here
+        if (noteIn > 60) // change value here
             return true;
         else
             return false;
@@ -64,15 +64,6 @@ public:
     void setMode(std::atomic<float>* mode)
     {
         _mode = mode;
-        //if (*mode == 0)
-        //{
-        //    _mode; // "Major";
-        //}
-
-        //if (*mode == 1)
-        //{
-        //    _mode = "Minor";
-        //}
     }
 
     /**
@@ -102,7 +93,7 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        // get local reference 
+        // get local reference of the base note
         baseNote = midiNoteNumber;
         float vel = (int) velocity * 1.0 + 1;
         numOctaves = vel;
@@ -112,7 +103,9 @@ public:
         // set freqeuncies 
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
         osc.setFrequency(freq);
-        key.setKey(baseNote, sr, *_mode, numOctaves);
+        key.setOscillatorParams(sr);
+        key.generateNotesForModes(numOctaves);
+        key.changeMode(baseNote, *_mode, numOctaves);
 
 
         // envelopes
@@ -160,8 +153,6 @@ public:
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
-                             
-                key.setMode(baseNote, *_mode, numOctaves); // change the mode of pulse whenever the user wishes to
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
 

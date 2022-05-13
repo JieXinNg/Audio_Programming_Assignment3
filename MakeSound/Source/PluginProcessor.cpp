@@ -24,7 +24,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     avpts(*this, nullptr, "ParamTreeIdentifier", {
     std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.3f) ,
     std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f) ,
-    std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({"Major", "Minor"}), 1) ,
+    std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f)
         })

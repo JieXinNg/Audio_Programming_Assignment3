@@ -43,59 +43,9 @@
 class KeySignatures {
 public:
 	std::string mode;
-	std::string modeList[2] = { "Major" , "Minor" };
+	int modeCount = 7;
+	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
 
-	void setMode(int _baseNote, float _mode, int numOctaves)
-	{
-
-		//// set the mode to major if some other string is passed
-		//if (_mode != 0 && _mode != 1)
-		//{
-		//	mode = "Major";
-		//}
-
-		mode = modeList[(int) _mode];
-
-
-		float baseNote = _baseNote;           // *** please change this, set the base note 
-		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
-
-		// created vectors which carries the values of semitones for each note from the base note 
-		// further modes can be added here
-		std::vector<int> major = { 0, 2, 4, 5, 7, 9, 11 };
-		std::vector<int> minor = { 0, 2, 3, 5, 7, 8, 10 };
-
-		if (numOctaves > 1) // add notes if there is more than one octave
-		{
-			// loop to generate all the possible notes
-			for (int i = 1; i < (numOctaves + 1); i++)
-			{
-				for (int x = 0; x < 7; x++) // loop through each note in one octave
-				{
-					// append the vectors to cover the number of octaves (numOctaves)
-					major.push_back(major[x] + 12 * i);
-					minor.push_back(minor[x] + 12 * i);
-
-				}
-			}
-		}
-
-		// create dictionary to map "major" and "minor" to the correct notes
-		// further modes can be mapped here rather than using if statements to check the input
-		std::map<std::string, std::vector<int>> keyDictionary;
-		keyDictionary["Major"] = major;
-		keyDictionary["Minor"] = minor;
-
-		// loop to select the correct mode and generate a vector to hold all the notes
-		for (int i = 0; i < numNotes; i++)
-		{
-			std::vector<int> a = keyDictionary.at(mode);           // select the mode at keyDictionary
-			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]); // convert each note from midi to frequency
-			notes.push_back(_note);                                 // add the frequency value to notes (vector)
-		}
-
-		//sineOsc.setFrequency(getNotes(0));                          // set the default frequency
-	}
 	/**
 	* generate the possible notes based on the key
 	* 
@@ -104,13 +54,8 @@ public:
 	* @param _mode (std::string) set the mode of the key "major" or "minor"
 	* @param numOctaves (int) set the number of octaves to generate the possible notes
 	*/
-	void setKey(int _baseNote, float _sr, float _mode, int numOctaves) 
+	void setOscillatorParams(float _sr) 
 	{
-		mode = modeList[(int)_mode];
-		
-		float baseNote = _baseNote;           // set the base note 
-		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
-
 		// set parameters for the oscillators
 		sampleRate = _sr;
 		sineOsc.setSampleRate(_sr);
@@ -123,11 +68,22 @@ public:
 
 		//lfo.setSampleRate(_sr);
 		//lfo.setFrequency(0.5);
+	}
 
-		// created vectors which carries the values of semitones for each note from the base note 
-		// further modes can be added here
-		std::vector<int> major = { 0, 2, 4, 5, 7, 9, 11 };
-		std::vector<int> minor = { 0, 2, 3, 5, 7, 8, 10 };
+	void generateNotesForModes(int numOctaves)
+	{
+
+		//reset all vectors before pushback
+		std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
+		std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
+		std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
+		std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
+		std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
+		std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
+		std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
+
+
+		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
 
 		if (numOctaves > 1) // add notes if there is more than one octave
 		{
@@ -137,28 +93,48 @@ public:
 				for (int x = 0; x < 7; x++) // loop through each note in one octave
 				{
 					// append the vectors to cover the number of octaves (numOctaves)
-					major.push_back(major[x] + 12 * i);
-					minor.push_back(minor[x] + 12 * i);
+					ionian.push_back(ionian[x] + 12 * i);
+					dorian.push_back(dorian[x] + 12 * i);
+					phrygian.push_back(phrygian[x] + 12 * i);
+					lydian.push_back(lydian[x] + 12 * i);
+					mixolydian.push_back(mixolydian[x] + 12 * i);
+					aeolian.push_back(aeolian[x] + 12 * i);
+					locrian.push_back(locrian[x] + 12 * i);
 
 				}
 			}
 		}
 
-		// create dictionary to map "major" and "minor" to the correct notes
-		// further modes can be mapped here rather than using if statements to check the input
-		std::map<std::string, std::vector<int>> keyDictionary; 
-		keyDictionary["Major"] = major;
-		keyDictionary["Minor"] = minor;
+		// compile all the different modes for for loop
+		std::vector<std::vector<int>> listOfModes = { ionian, dorian, phrygian, lydian , mixolydian, aeolian, locrian };
+
+		
+		for (int i = 0; i < modeCount; i++)
+		{
+			keyDictionary[modeList[i]] = listOfModes[i]; // eg: keyDictionary["Major"] = ionian;
+		}
+	}
+
+	void changeMode(int _baseNote, float _mode, int numOctaves)
+	{
+		std::vector<float> _notes;       // vector to contain the generated notes for the scale
+
+		mode = modeList[(int)_mode];
+
+		float baseNote = _baseNote;           // set the base note 
+		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
+
 
 		// loop to select the correct mode and generate a vector to hold all the notes
 		for (int i = 0; i < numNotes; i++)
 		{
-			std::vector<int> a = keyDictionary.at(mode);           // select the mode at keyDictionary
-			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]); // convert each note from midi to frequency
-			notes.push_back(_note);                                 // add the frequency value to notes (vector)
+			std::vector<int> a = keyDictionary.at(mode);							// select the mode at keyDictionary
+			float _note = juce::MidiMessage::getMidiNoteInHertz(baseNote + a[i]);   // convert each note from midi to frequency
+			_notes.push_back(_note);												// add the frequency value to notes (vector)
+			notes = _notes;															//  set notes to be from the selected mode
 		}
 
-		sineOsc.setFrequency(getNotes(0));                          // set the default frequency
+		sineOsc.setFrequency(getNotes(0));											// set the default frequency
 	}
 
 	/**
@@ -186,7 +162,7 @@ public:
 	*/
 	float randomNoteGenerator()
 	{
-		float pulseVolume; // = sinePulse.process();
+		float pulseVolume; 
 		if (phasor.process() <= 0.5f)
 		{
 			pulseVolume = sin(2.0 * 3.142 * phasor.process());
@@ -233,12 +209,11 @@ private:
 	float sampleRate;
 	//std::string mode;     
 	int numNotes = 7;               // number of notes according to number of octaves set in setKey
+	std::vector<float> notes;       // vector to contain the generated notes for the scale
 
 	// variables to be set in setSinePulseParams
 	float pulseFreq = 0.1;          // set the default frequency of sinPulse
 	int pulsePower = 9;            // set the default power of the sine wave for sinePulse
-	
-	std::vector<float> notes;       // vector to contain the generated notes for the scale
 	
 	// oscillators
 	PhaseModulationSineOsc sineOsc; // sine oscillator to generate audio
@@ -249,4 +224,19 @@ private:
 
 	juce::Random random;            // random is called to select the notes to be played
 
+
+	//// created vectors which carries the values of semitones for each note from the base note 
+	//// further modes can be added here
+	//std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
+	//std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
+	//std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
+	//std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
+	//std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
+	//std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
+	//std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
+
+
+	// create dictionary to map the selected modes to the correct notes
+	// further modes can be mapped here rather than using if statements to check the input
+	std::map<std::string, std::vector<int>> keyDictionary;
 };
