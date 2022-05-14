@@ -87,34 +87,56 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        // get local reference of the base note
-        baseNote = midiNoteNumber - 24;
-        float numOctaves = ceil(velocity * 3) + 1;
-        float lfoFrequency = velocity;
-        float envelopeRelease = velocity * 12.0f;
-
         playing = true;
         ending = false;
 
+        // get local reference of the base note
+        baseNote = midiNoteNumber;
+        float numOctaves = ceil(velocity * 3) + 1;
+        
         // set freqeuncies 
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
-        osc.setFrequency(freq);
         key.setOscillatorParams(sr);
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, *_mode, numOctaves);
+        float lfoFrequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); //velocity;
         key.setLfofreq(lfoFrequency);
-        DBG(numOctaves);
+
+        setADSRValues(velocity);
+    }
+
+    void setADSRValues(float velocity)
+    {
+        
+        float envelopeRelease = exp (velocity * 6.0f - 2.0f); // scaled value (range e^-2 to e^3)
+        float sustainParameter;
+
+        if (velocity > 0.8f)
+        {
+            sustainParameter = juce::jmap(random.nextFloat(), 0.01f, 0.15f);
+        }
+
+        if (velocity < 0.3f)
+        {
+            sustainParameter = juce::jmap(random.nextFloat(), 0.75f, 1.0f);
+        }
+        if (velocity >= 0.3f && velocity <= 0.8f)
+        {
+            sustainParameter = juce::jmap(random.nextFloat(), 0.25f, 0.9f);
+        }
+
+        DBG(sustainParameter);
 
         // envelopes
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 0.1f; // fade in
-        envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.7f; // vol level
-        envParams.release = envelopeRelease; // fade out
-        env.setParameters(envParams); // set the envelop parameters
+        juce::ADSR::Parameters envParams;       // create insatnce of ADSR envelop
+        envParams.attack = 0.1f;                // fade in
+        envParams.decay = 0.15f;                // fade down to sustain level
+        envParams.sustain = sustainParameter;    // vol level
+        envParams.release = envelopeRelease;    // fade out 
+        env.setParameters(envParams);           // set the envelop parameters
         env.reset();
         env.noteOn();
     }
+
     //--------------------------------------------------------------------------
     /// Called when a MIDI noteOff message is received
     /**
@@ -159,7 +181,7 @@ public:
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
 
-                float currentSample = key.randomNoteGenerator() *envVal; // apply envelop to oscillator 
+                float currentSample = key.randomNoteGenerator() * envVal; // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -197,9 +219,9 @@ public:
     //--------------------------------------------------------------------------
 private:
     //--------------------------------------------------------------------------
-    bool playing = false; // set default value for playing to be false
-    bool ending = false; // bool to determine the moment the note is released
-    juce::ADSR env; // envelope for synthesiser
+    bool playing = false;       // set default value for playing to be false
+    bool ending = false;        // bool to determine the moment the note is released
+    juce::ADSR env;             // envelope for synthesiser
 
     std::atomic<float>* releaseParam;
 
@@ -207,10 +229,8 @@ private:
     SineOsc osc;
 
     std::atomic<float>* volume;
-    float freq;
     float sr;
-    //std::string _mode;
-    std::atomic < float >* _mode;
+    std::atomic<float>* _mode;
 
     // used to set the key of sequencer 
     KeySignatures key;
@@ -219,5 +239,7 @@ private:
 
     // pulse speed, sine pulse freq, sine power
     std::atomic<float>* pulseSpeed;
+
+    juce::Random random;            // random is called to select the notes to be played
 
 };
