@@ -12,6 +12,7 @@
 #include <JuceHeader.h>
 #include "Oscillator.h"
 #include <math.h>
+#include "ModulatingFilter.h"
 
 // ===========================
 // ===========================
@@ -39,8 +40,16 @@ public:
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
+        panningLfo.setSampleRate(sampleRate);
+        panningLfo.setFrequency(0.05);
+        panningLfo.setPower(9);
+        modFilter.setParams(sampleRate, 0.5f);
 
-        prepareToPlay(sampleRate);  // set modulation parameters
+        setModulationParameters(sampleRate);  // set modulation parameters
+
+        // smooth value setting
+        smoothVolume.reset(sampleRate, 1.0f);
+        smoothVolume.setCurrentAndTargetValue(0.0);
 
         // envelopes
         juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
@@ -52,7 +61,6 @@ public:
 
     }
 
-
     /**
     * set volume
     */
@@ -61,7 +69,14 @@ public:
         volume = volumeInput;
     }
 
-    void prepareToPlay(float _sampleRate)
+    void setModFilterParams(std::atomic<float>* _cutoffMode, std::atomic<float>* _minVal, std::atomic<float>* _maxVal)
+    {
+        cutoffMode = _cutoffMode;
+        minVal = _minVal;
+        maxVal = _maxVal;
+    }
+
+    void setModulationParameters(float _sampleRate)
     {
         float sineOscsModFreq[4] = { 0.25, 0.5, 0.75, 1.0 };
         int sineOscsModDurations[4] = { 180, 240, 300, 360 };
@@ -132,21 +147,36 @@ public:
      */
     void renderNextBlock(juce::AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
+        float* left = outputBuffer.getWritePointer(0); // access the left channel
+        float* right = outputBuffer.getWritePointer(1); // access the right channel
+
         if (playing) // check to see if this voice should be playing
         {
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
+                smoothVolume.setTargetValue(*volume); // smooth value
+                float gainVal = smoothVolume.getNextValue();
+
+                modFilter.setFilter(*cutoffMode, *minVal, *maxVal); // set filter values
                 float envVal = env.getNextSample();
 
-                float currentSample = (osc.process()) * envVal; // apply envelop to oscillator 
+                float currentSample = modFilter.process((osc.process()) * envVal); // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
-                    outputBuffer.addSample(chan, sampleIndex, *volume * currentSample);
+                    outputBuffer.addSample(chan, sampleIndex, gainVal * currentSample);
                 }
+
+                //float* left = outputBuffer.getWritePointer(0); // access the left channel
+                //float* right = outputBuffer.getWritePointer(1); // access the right channel
+
+                //const float finalVolForChannel = 1;
+
+                //left[sampleIndex] = left[sampleIndex] * panningLfo.process(); // this is interfering with the other synthsiser's panning
+                //right[sampleIndex] = 0;
 
                 if (ending)
                 {
@@ -185,6 +215,7 @@ private:
 
     // Oscillators
     PhaseModulationSineOsc osc;
+    SineOsc panningLfo;
 
     std::atomic<float>* volume;
     float freq;
@@ -195,4 +226,11 @@ private:
     juce::Reverb::Parameters reverbParams;
     juce::Random random;
 
+    ModulatingFilter modFilter;
+    std::atomic<float>* cutoffMode;
+    std::atomic<float>* minVal;
+    std::atomic<float>* maxVal;
+
+    // smooth values
+    juce::SmoothedValue<float> smoothVolume;
 };

@@ -12,6 +12,7 @@
 #include "YourSynthVoice.h"
 #include "pulseSynth.h"
 #include "FMSynth.h"
+#include "Oscillator.h"
 
 //==============================================================================
 /**
@@ -59,6 +60,7 @@ public:
 private:
     // audio effects
     juce::Reverb reverb;
+    juce::Reverb::Parameters reverbParams;
 
     // synthesiser class
     int voiceCount = 8;
@@ -74,11 +76,16 @@ private:
     std::atomic<float>* pulseSpeedParameter;
     std::atomic<float>* reverbParameter;
     std::atomic<float>* cuttOffMode;
-    std::atomic<float>* sinePulsePowerParameter;
+    std::atomic<float>* minVal;
+    std::atomic<float>* maxVal;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
-
+    
+//    juce::AudioBuffer<float> audioBuffer;
+    SineOsc lfo1;
+    SineOsc lfo2;
+    
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)
 };

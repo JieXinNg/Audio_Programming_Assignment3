@@ -7,7 +7,6 @@
     <GROUP id="{18044EEA-8D81-B4A6-EC41-289568D21662}" name="Source">
       <FILE id="XJTO9o" name="PluginProcessor.cpp" compile="1" resource="0"
             file="Source/PluginProcessor.cpp"/>
-      <FILE id="FpXVH5" name="SourceCode.h" compile="0" resource="0" file="Source/SourceCode.h"/>
       <FILE id="GdIbu6" name="PluginProcessor.h" compile="0" resource="0"
             file="Source/PluginProcessor.h"/>
       <FILE id="Re4H7Y" name="PluginEditor.cpp" compile="1" resource="0"
@@ -18,9 +17,10 @@
       <FILE id="tFcKbQ" name="KeySignatures.h" compile="0" resource="0" file="Source/KeySignatures.h"/>
       <FILE id="cWsmI8" name="Synthesiser Starting code (sound and voice).h"
             compile="0" resource="0" file="Source/Synthesiser Starting code (sound and voice).h"/>
-      <FILE id="kDQP2I" name="ModulatingFilter.h" compile="0" resource="0"
-            file="../../../../Desktop/Audio Prog/B136840_AudioProgramming_Assignment 2/Assignment2-drone/Source/ModulatingFilter.h"/>
+      <FILE id="ffhTwx" name="FMSynth.h" compile="0" resource="0" file="Source/FMSynth.h"/>
       <FILE id="LB789C" name="pulseSynth.h" compile="0" resource="0" file="Source/pulseSynth.h"/>
+      <FILE id="AQpVaX" name="ModulatingFilter.h" compile="0" resource="0"
+            file="Source/ModulatingFilter.h"/>
       <FILE id="pyeoDy" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
     </GROUP>
   </MAINGROUP>

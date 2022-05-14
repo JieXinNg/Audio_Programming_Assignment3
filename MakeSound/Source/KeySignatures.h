@@ -56,6 +56,9 @@ public:
 		sampleRate = _sr;
 		sineOsc.setSampleRate(_sr);
 		sineOsc.setRampParams(_sr, 0.03333, 240);
+		sqOsc.setSampleRate(_sr);
+		triOsc.setSampleRate(_sr);
+
 		sinePulse.setSampleRate(_sr);
 		sinePulse.setFrequency(pulseFreq);
 		sinePulse.setPower(pulsePower);
@@ -63,7 +66,7 @@ public:
 		phasor.setFrequency(0.5);
 
 		lfo.setSampleRate(_sr);
-		lfo.setFrequency(0.1);
+		lfo.setFrequency(1);
 	}
 
 	void generateNotesForModes(int numOctaves)
@@ -131,6 +134,8 @@ public:
 		}
 
 		sineOsc.setFrequency(getNotes(0));											// set the default frequency
+		sqOsc.setFrequency(getNotes(0));
+		triOsc.setFrequency(getNotes(0));
 	}
 
 	/**
@@ -167,6 +172,7 @@ public:
 	float randomNoteGenerator()
 	{
 		float pulseVolume; 
+		float output;
 		if (phasor.process() <= 0.5f)
 		{
 			pulseVolume = sin(2.0 * 3.142 * phasor.process());
@@ -176,8 +182,21 @@ public:
 			pulseVolume = 0;
 		}
 
-		float output = sineOsc.process();
-		return output * pulseVolume * lfo.process() * 0.5f; 
+		if (randomOsc == 0)
+		{
+			output = sineOsc.process();
+		}
+
+		if (randomOsc == 1)
+		{
+			output = sqOsc.process();
+		}
+		if (randomOsc == 2)
+		{
+			output = triOsc.process();
+		}
+		//float output = sineOsc.process();
+		return output * pulseVolume * lfo.process() * 0.25f; 
 	}
 
 	/**
@@ -192,6 +211,10 @@ public:
 			int randomInteger = random.nextInt(numNotes - 1); // generate random integer
 			int outVal = notes[randomInteger]; // select random note from the scale
 			sineOsc.setFrequency(outVal); // set the frequency of sineOsc
+			sqOsc.setFrequency(outVal);
+			triOsc.setFrequency(outVal);
+			randomOsc = random.nextInt(3);
+			DBG(randomOsc);
 		}
 	}
 
@@ -219,11 +242,14 @@ private:
 	
 	// oscillators
 	PhaseModulationSineOsc sineOsc; // sine oscillator to generate audio
+	SquareOsc sqOsc;
+	TriOsc triOsc;
 	SineOsc sinePulse;              // sine oscillator to modulate the volume to simulate pulse
 	Oscillator phasor;              // phasor to check the time to change frequency
 	SineOsc lfo;					// lfo to modulate the volume
 
 	juce::Random random;            // random is called to select the notes to be played
+	int randomOsc;				// choose random oscillator
 
 	// create dictionary to map the selected modes to the correct notes
 	// further modes can be mapped here rather than using if statements to check the input

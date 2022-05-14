@@ -46,7 +46,8 @@ public:
         sr = sampleRate;
 
         // set sample rate for oscillators and envelop
-        osc.setSampleRate(sampleRate);
+        sineOsc.setSampleRate(sampleRate); // might not be needed
+        sqOsc.setSampleRate(sampleRate);    // might not be needed
         env.setSampleRate(sampleRate);
 
     }
@@ -226,7 +227,8 @@ private:
     std::atomic<float>* releaseParam;
 
     // Oscillators
-    SineOsc osc;
+    SineOsc sineOsc;
+    SquareOsc sqOsc;
 
     std::atomic<float>* volume;
     float sr;

@@ -27,8 +27,9 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
-    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 3)//,
-    //std::make_unique < juce::AudioParameterInt >("sinePulsePower", "Sine Power", 1 , 21 , 9)
+    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 1),
+    std::make_unique < juce::AudioParameterInt >("minCut", "Min cutoff value", 50 , 1000 , 1000),
+    std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 1000)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
@@ -37,7 +38,8 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     pulseSpeedParameter = avpts.getRawParameterValue("pulseSpeed");
     reverbParameter = avpts.getRawParameterValue("reverbSize");
     cuttOffMode = avpts.getRawParameterValue("cutOffMode");
-    //sinePulsePowerParameter = avpts.getRawParameterValue("sinePulsePower");
+    minVal = avpts.getRawParameterValue("minCut");
+    maxVal = avpts.getRawParameterValue("maxCut");
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
@@ -62,7 +64,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         point->setPulseSpeed(pulseSpeedParameter);
         FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
         abc->setVolumePointer(volumeParameter);
-
+        abc->setModFilterParams(cuttOffMode, minVal, maxVal);
     }
 }
 
@@ -72,6 +74,12 @@ MakeSoundAudioProcessor::~MakeSoundAudioProcessor()
 
 void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    // lfo variables for panning
+    lfo1.setSampleRate(sampleRate);
+    lfo2.setSampleRate(sampleRate);
+    lfo1.setFrequency(0.05);
+    lfo2.setFrequency(0.1);
+
     // smooth value setting
     smoothVolume.reset(sampleRate, 1.0f);
     smoothVolume.setCurrentAndTargetValue(0.0);
@@ -92,7 +100,6 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
     }
 
     // set reverb parameters 
-    juce::Reverb::Parameters reverbParams;
     reverbParams.dryLevel = 0.8f;
     reverbParams.wetLevel = 0.3f;
     reverbParams.roomSize = *reverbParameter;
@@ -103,18 +110,29 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
 
 void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    reverbParams.roomSize = *reverbParameter;
+    reverb.setParameters(reverbParams);
+
     juce::ScopedNoDenormals noDenormals;
     // process entire block of samples for synths
 
     //smoothVolume.setTargetValue(*volumeParameter); // smooth value
     //float gainVal = smoothVolume.getNextValue();
 
-    float* left = buffer.getWritePointer(0); // access the left channel
-    float* right = buffer.getWritePointer(1); // access the right channel
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synthPulse.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synth2.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+
+    float* left = buffer.getWritePointer(0); // access the left channel
+    float* right = buffer.getWritePointer(1); // access the right channel
+
+    for (int sample = 0; sample < buffer.getNumSamples(); sample++)
+    {
+        left[sample] = left[sample]; // *lfo1.process();
+        right[sample] = right[sample]; // *lfo2.process();
+    }
+
 
     reverb.processStereo(left, right, buffer.getNumSamples());
 }
