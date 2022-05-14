@@ -21,7 +21,7 @@ class SecondSynth : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn <= 60) // change value here
+        if (noteIn <= 45) // change value here
             return true;
         else
             return false;
@@ -41,12 +41,13 @@ public:
         detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.5f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.7f; // vol level
-        //envParams.release = 0.5f; // fade out
-        //env.setParameters(envParams); // set the envelop parameters
+        // envelopes
+        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        envParams.attack = 5.0f; // fade in
+        envParams.decay = 3.0f;  // fade down to sustain level
+        envParams.sustain = 3.0f; // vol level
+        envParams.release = 5.0f; // fade out
+        env.setParameters(envParams); // set the envelop parameters
 
     }
 
@@ -81,19 +82,13 @@ public:
         float vel = (float)velocity * 20.0;
         velocityDetune = (float)exp(0.2 * vel) / (float)exp(4.0) * 20.0;
         float envelopeRelease = velocity * 12.0f;
-        playing = true;
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-        // set freqeuncies 
-        osc.setFrequency(freq);
 
-        // envelopes
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 0.2f; // fade in
-        envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.7f; // vol level
-        envParams.release = envelopeRelease; // fade out
-        env.setParameters(envParams); // set the envelop parameters
-        env.reset(); // can delete this if we dont want it to reset
+        playing = true;
+        ending = false;
+
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber) + 24;
+        //osc.setFrequency(freq); // set freqeuncies 
+        env.reset(); 
         env.noteOn();
     }
     //--------------------------------------------------------------------------
@@ -133,14 +128,14 @@ public:
         if (playing) // check to see if this voice should be playing
         {
             //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
-            detuneOsc.setFrequency(freq - velocityDetune); // velocityDetune *detuneAmount
+            //detuneOsc.setFrequency(freq - velocityDetune); // velocityDetune *detuneAmount
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
 
-                osc.setFrequency(envVal);
+                osc.setFrequency(envVal * freq);
 
                 float currentSample = (osc.process()) * envVal; // apply envelop to oscillator 
 

@@ -44,18 +44,11 @@ public:
     {
         // get a copy of the sample rate value
         sr = sampleRate;
-        //key.setKey(60, sr, _mode, 2); // might not need this line
 
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 0.1f; // fade in
-        envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.7f; // vol level
-        envParams.release = 3.0f; // fade out
-        env.setParameters(envParams); // set the envelop parameters
     }
 
     /**
@@ -75,13 +68,11 @@ public:
     }
 
     /**
-    * 
-    */
-    void setPulseSpeed(std::atomic<float>* _pulseSpeed, std::atomic<float>* _sineFreq, std::atomic<float>* _sinePower)
+*
+*/
+    void setPulseSpeed(std::atomic<float>* _pulseSpeed)
     {
         pulseSpeed = _pulseSpeed;
-        sineFreq = _sineFreq;
-        sinePower = _sinePower;
 
     }
 
@@ -103,6 +94,7 @@ public:
         float envelopeRelease = velocity * 12.0f;
 
         playing = true;
+        ending = false;
 
         // set freqeuncies 
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); 
@@ -120,7 +112,7 @@ public:
         envParams.sustain = 0.7f; // vol level
         envParams.release = envelopeRelease; // fade out
         env.setParameters(envParams); // set the envelop parameters
-        env.reset(); 
+        env.reset();
         env.noteOn();
     }
     //--------------------------------------------------------------------------
@@ -166,7 +158,6 @@ public:
                 float envVal = env.getNextSample();
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
-                key.setSinePulseParams(*sineFreq, *sinePower);
 
                 float currentSample = key.randomNoteGenerator() *envVal; // apply envelop to oscillator 
 
@@ -228,7 +219,5 @@ private:
 
     // pulse speed, sine pulse freq, sine power
     std::atomic<float>* pulseSpeed;
-    std::atomic<float>* sineFreq;
-    std::atomic<float>* sinePower;
 
 };

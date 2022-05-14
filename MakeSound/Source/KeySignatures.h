@@ -17,11 +17,11 @@
 */
 
 #pragma once
-#include <cmath> // library for the function pow()
-#include <vector> // library for creating vectors
-#include "Oscillator.h" // library for generating oscillators
-#include <map> // create map to map the modes to the values of the notes
-#include <JuceHeader.h> // library to convert midi values to frequencies
+#include <cmath>			// library for the function pow()
+#include <vector>			// library for creating vectors
+#include "Oscillator.h"		// library for generating oscillators
+#include <map>				// create map to map the modes to the values of the notes
+#include <JuceHeader.h>		// library to convert midi values to frequencies
 
 
 /**
@@ -42,10 +42,6 @@
 */
 class KeySignatures {
 public:
-	std::string mode;
-	int modeCount = 7;
-	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
-
 	/**
 	* generate the possible notes based on the key
 	* 
@@ -190,7 +186,6 @@ public:
 	*/
 	void changeFreq()
 	{
-		//phasor.setFrequency(lfo.process() * 0.5);
 
 		if ((1 - phasor.process()) <= phasor.getPhaseDelta()) // change frequency when the phase is nearing 1 
 		{
@@ -214,8 +209,7 @@ public:
 private:
 	// variables to be set in setKey()
 	int key;                        // midi value
-	float sampleRate;
-	//std::string mode;     
+	float sampleRate;				// sample rate    
 	int numNotes = 7;               // number of notes according to number of octaves set in setKey
 	std::vector<float> notes;       // vector to contain the generated notes for the scale
 
@@ -227,12 +221,14 @@ private:
 	PhaseModulationSineOsc sineOsc; // sine oscillator to generate audio
 	SineOsc sinePulse;              // sine oscillator to modulate the volume to simulate pulse
 	Oscillator phasor;              // phasor to check the time to change frequency
-
-	SineOsc lfo;					// lfo to modulate the phasor frequency // not working now
+	SineOsc lfo;					// lfo to modulate the volume
 
 	juce::Random random;            // random is called to select the notes to be played
 
 	// create dictionary to map the selected modes to the correct notes
 	// further modes can be mapped here rather than using if statements to check the input
 	std::map<std::string, std::vector<int>> keyDictionary;
+	std::string mode;
+	int modeCount = 7;
+	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
 };

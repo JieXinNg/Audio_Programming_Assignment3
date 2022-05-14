@@ -64,15 +64,16 @@ private:
     int voiceCount = 8;
     juce::Synthesiser synthPulse;
     juce::Synthesiser synth;
+    juce::Synthesiser synth2;
     
     juce::AudioProcessorValueTreeState avpts;
     // parameters 
     std::atomic<float>* volumeParameter;
     std::atomic<float>* detuneParameter;
-    std::atomic<float>* modeParameter;
+    std::atomic<float>* modeParameter;          // string to choose mode (scales)
     std::atomic<float>* pulseSpeedParameter;
     std::atomic<float>* reverbParameter;
-    std::atomic<float>* sinePulseFreqParameter;
+    std::atomic<float>* cuttOffMode;
     std::atomic<float>* sinePulsePowerParameter;
 
     // smooth values

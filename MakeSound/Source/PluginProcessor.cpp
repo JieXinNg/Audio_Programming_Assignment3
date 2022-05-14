@@ -27,8 +27,8 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
-    std::make_unique < juce::AudioParameterFloat >("sinePulseFreq", "Sine pulse freq", 0.1f , 2.0f , 0.1f),
-    std::make_unique < juce::AudioParameterInt >("sinePulsePower", "Sine Power", 1 , 21 , 9)
+    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 3)//,
+    //std::make_unique < juce::AudioParameterInt >("sinePulsePower", "Sine Power", 1 , 21 , 9)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
@@ -36,16 +36,18 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     modeParameter = avpts.getRawParameterValue("mode");
     pulseSpeedParameter = avpts.getRawParameterValue("pulseSpeed");
     reverbParameter = avpts.getRawParameterValue("reverbSize");
-    sinePulseFreqParameter = avpts.getRawParameterValue("sinePulseFreq");
-    sinePulsePowerParameter = avpts.getRawParameterValue("sinePulsePower");
+    cuttOffMode = avpts.getRawParameterValue("cutOffMode");
+    //sinePulsePowerParameter = avpts.getRawParameterValue("sinePulsePower");
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
         synth.addVoice( new MySynthVoice() );
         synthPulse.addVoice(new pulseSynthVoice());
+        synth2.addVoice(new SecondSynthVoice());
     }
     synth.addSound( new MySynthSound() );
     synthPulse.addSound(new pulseSynthSound());
+    synth2.addSound(new SecondSynth());
 
     // loop that gets updated 
     for (int i = 0; i < voiceCount; i++) // set detune 
@@ -57,7 +59,9 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         point->setMode(modeParameter);
         point->setVolumePointer(volumeParameter);
         point->setMode(modeParameter);
-        point->setPulseSpeed(pulseSpeedParameter, sinePulseFreqParameter, sinePulsePowerParameter);
+        point->setPulseSpeed(pulseSpeedParameter);
+        SecondSynthVoice* abc = dynamic_cast<SecondSynthVoice*>(synth2.getVoice(i));
+        abc->setVolumePointer(volumeParameter);
 
     }
 }
@@ -75,6 +79,7 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
     // set the sample rate of synths
     synth.setCurrentPlaybackSampleRate(sampleRate); 
     synthPulse.setCurrentPlaybackSampleRate(sampleRate); 
+    synth2.setCurrentPlaybackSampleRate(sampleRate);
 
     for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
     {
@@ -82,6 +87,8 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
         v->init(sampleRate);
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
         point->init(sampleRate);
+        SecondSynthVoice* abc = dynamic_cast<SecondSynthVoice*>(synth2.getVoice(i));
+        abc->init(sampleRate);
     }
 
     // set reverb parameters 
@@ -107,6 +114,7 @@ void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synthPulse.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    synth2.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
 
     reverb.processStereo(left, right, buffer.getNumSamples());
 }

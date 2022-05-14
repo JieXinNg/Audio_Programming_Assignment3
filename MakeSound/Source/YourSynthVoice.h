@@ -20,7 +20,7 @@ class MySynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override 
     { 
-        if (noteIn <= 60) // change value here
+        if (noteIn > 45 && noteIn <= 60) // change value here
             return true;
         else
             return false;
@@ -35,19 +35,20 @@ public:
     MySynthVoice() {}
     void init(float sampleRate)
     {
+
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
         detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.5f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.7f; // vol level
-        //envParams.release = 0.5f; // fade out
-        //env.setParameters(envParams); // set the envelop parameters
+        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        envParams.attack = 2.0f; // fade in
+        envParams.decay = 0.75f;  // fade down to sustain level
+        envParams.sustain = 0.25f; // vol level
+        envParams.release = 3.0f; // fade out
+        env.setParameters(envParams); // set the envelop parameters
         
-        setReverbParams();
+        //setReverbParams();
     }
 
     /**
@@ -89,11 +90,12 @@ public:
         float vel = (float) velocity * 20.0;
         velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0;
         float envelopeRelease = velocity * 12.0f;
-        DBG(envelopeRelease);
+
         playing = true;
+        ending = false;
+
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-        // set freqeuncies 
-        osc.setFrequency(freq);
+        osc.setFrequency(freq); // set freqeuncies 
 
         //DBG(1 / (float) pow((vel + 1), 1));
 
@@ -105,13 +107,14 @@ public:
         //envParams.release = 1 / (float) pow((vel + 1), 1); // fade out
         //env.setParameters(envParams); // set the envelop parameters
 
-        // envelopes
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 0.2f; // fade in
-        envParams.decay = 0.25f;  // fade down to sustain level
-        envParams.sustain = 0.7f; // vol level
-        envParams.release = envelopeRelease; // fade out
-        env.setParameters(envParams); // set the envelop parameters
+        //// envelopes
+        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        //envParams.attack = 0.2f; // fade in
+        //envParams.decay = 0.25f;  // fade down to sustain level
+        //envParams.sustain = 0.7f; // vol level
+        //envParams.release = envelopeRelease; // fade out
+        //env.setParameters(envParams); // set the envelop parameters
+        
         env.reset(); // can delete this if we dont want it to reset
         env.noteOn();
     }
@@ -135,6 +138,13 @@ public:
             clearCurrentNote();
             playing = false;
         }
+
+        //env.noteOff();
+
+        //if (! allowTailOff || ! env.isActive())
+        //{
+        //    clearCurrentNote();
+        //}
     }
 
     //--------------------------------------------------------------------------
@@ -149,6 +159,9 @@ public:
      */
     void renderNextBlock(juce::AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
+        //if (!isVoiceActive())
+        //    return;
+
         if (playing) // check to see if this voice should be playing
         {
             //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
@@ -169,7 +182,7 @@ public:
                 }
 
                 // add reverb, does not work
-                 reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
+                 //reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
 
                 if (ending)
                 {
@@ -179,6 +192,8 @@ public:
                         playing = false;
                     }
                 }
+                //if (!env.isActive())
+                //    clearCurrentNote();
             }
         }
     }
