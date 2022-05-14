@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    SourceCode.h
+    FMSynth.h
     Created: 13 May 2022 
     Author:  s1859154
 
@@ -16,7 +16,7 @@
 // ===========================
 // ===========================
 // SOUND
-class SecondSynth : public juce::SynthesiserSound
+class FMSynthSound : public juce::SynthesiserSound
 {
 public:
     bool appliesToNote(int noteIn) override
@@ -30,34 +30,28 @@ public:
     bool appliesToChannel(int) override { return true; }
 };
 
-class SecondSynthVoice : public juce::SynthesiserVoice
+class FMsynthVoice : public juce::SynthesiserVoice
 {
 public:
-    SecondSynthVoice() {}
+    FMsynthVoice() {}
     void init(float sampleRate)
     {
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
-        detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
+
+        prepareToPlay(sampleRate);  // set modulation parameters
 
         // envelopes
         juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        envParams.attack = 5.0f; // fade in
-        envParams.decay = 3.0f;  // fade down to sustain level
-        envParams.sustain = 3.0f; // vol level
-        envParams.release = 5.0f; // fade out
-        env.setParameters(envParams); // set the envelop parameters
+        envParams.attack = 2.0f;         // fade in
+        envParams.decay = 0.5f;         // fade down to sustain level
+        envParams.sustain = 0.5f;       // vol level
+        envParams.release = 4.0f;       // fade out
+        env.setParameters(envParams);   // set the envelop parameters
 
     }
 
-    /**
-    * set detune amount
-    */
-    void setDetunePointer(std::atomic<float>* detuneInput)
-    {
-        detuneAmount = detuneInput;
-    }
 
     /**
     * set volume
@@ -67,6 +61,22 @@ public:
         volume = volumeInput;
     }
 
+    void prepareToPlay(float _sampleRate)
+    {
+        float sineOscsModFreq[4] = { 0.25, 0.5, 0.75, 1.0 };
+        int sineOscsModDurations[4] = { 180, 240, 300, 360 };
+        float freqs[4] = { 0.00166667f, 0.003333333f, 0.005f, 0.006666667f }; // 0.00166667 = 1 / 4 cycle / 2.5mins (1 / (10 * 60s) cycle/s)
+        float depths[4] = { 20, 30, 50, 70 };
+
+        float phaseModFreq = sineOscsModFreq[random.nextInt(4)];
+        int phaseModDuration = sineOscsModDurations[random.nextInt(4)];
+        float fmRate = freqs[random.nextInt(4)];
+        float fmDepth = depths[random.nextInt(4)];         
+
+        osc.setRampParams(_sampleRate, phaseModFreq, phaseModDuration);
+        //osc.setFreqModulationParams(fmRate, fmDepth); 
+        osc.setFreqModulationParams(60, 30);  // cant hear the modulation?? but maybe there is since i hear beat frequencies
+    }
 
     //--------------------------------------------------------------------------
     /**
@@ -79,15 +89,12 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        float vel = (float)velocity * 20.0;
-        velocityDetune = (float)exp(0.2 * vel) / (float)exp(4.0) * 20.0;
-        float envelopeRelease = velocity * 12.0f;
-
         playing = true;
         ending = false;
 
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber) + 24;
-        //osc.setFrequency(freq); // set freqeuncies 
+        osc.setFrequency(freq);             // set freqeuncies 
+
         env.reset(); 
         env.noteOn();
     }
@@ -127,15 +134,11 @@ public:
     {
         if (playing) // check to see if this voice should be playing
         {
-            //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
-            //detuneOsc.setFrequency(freq - velocityDetune); // velocityDetune *detuneAmount
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
-
-                osc.setFrequency(envVal * freq);
 
                 float currentSample = (osc.process()) * envVal; // apply envelop to oscillator 
 
@@ -143,11 +146,7 @@ public:
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
                     outputBuffer.addSample(chan, sampleIndex, *volume * currentSample);
-                    //reverb.processMono(outputBuffer.getWritePointer(chan), currentSample); // dont hear a difference
                 }
-
-                // add reverb, does not work
-                reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
 
                 if (ending)
                 {
@@ -173,7 +172,7 @@ public:
      */
     bool canPlaySound(juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<SecondSynth*> (sound) != nullptr;
+        return dynamic_cast<FMSynthSound*> (sound) != nullptr;
     }
     //--------------------------------------------------------------------------
 private:
@@ -185,10 +184,8 @@ private:
     std::atomic<float>* releaseParam;
 
     // Oscillators
-    TriOsc osc;
-    TriOsc detuneOsc;
+    PhaseModulationSineOsc osc;
 
-    std::atomic<float>* detuneAmount;
     std::atomic<float>* volume;
     float freq;
     float velocityDetune;
@@ -196,5 +193,6 @@ private:
     // effects
     juce::Reverb reverb;
     juce::Reverb::Parameters reverbParams;
+    juce::Random random;
 
 };

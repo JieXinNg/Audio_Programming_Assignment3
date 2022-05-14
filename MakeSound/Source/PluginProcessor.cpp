@@ -43,11 +43,11 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     {
         synth.addVoice( new MySynthVoice() );
         synthPulse.addVoice(new pulseSynthVoice());
-        synth2.addVoice(new SecondSynthVoice());
+        synth2.addVoice(new FMsynthVoice());
     }
     synth.addSound( new MySynthSound() );
     synthPulse.addSound(new pulseSynthSound());
-    synth2.addSound(new SecondSynth());
+    synth2.addSound(new FMSynthSound());
 
     // loop that gets updated 
     for (int i = 0; i < voiceCount; i++) // set detune 
@@ -60,7 +60,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         point->setVolumePointer(volumeParameter);
         point->setMode(modeParameter);
         point->setPulseSpeed(pulseSpeedParameter);
-        SecondSynthVoice* abc = dynamic_cast<SecondSynthVoice*>(synth2.getVoice(i));
+        FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
         abc->setVolumePointer(volumeParameter);
 
     }
@@ -87,7 +87,7 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
         v->init(sampleRate);
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
         point->init(sampleRate);
-        SecondSynthVoice* abc = dynamic_cast<SecondSynthVoice*>(synth2.getVoice(i));
+        FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
         abc->init(sampleRate);
     }
 
