@@ -10,7 +10,7 @@
 
 #include <JuceHeader.h>
 #include "YourSynthVoice.h"
-#include "pulseSynth.h"
+#include "PulseSynth.h"
 #include "FMSynth.h"
 #include "Oscillator.h"
 
