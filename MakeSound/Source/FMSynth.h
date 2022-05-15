@@ -15,6 +15,7 @@
 #include "ModulatingFilter.h"
 #include "KeySignatures.h"
 #include "OscillatorContainer.h"
+#include "Delay.h"
 
 // ===========================
 // ===========================
@@ -24,7 +25,7 @@ class FMSynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn <= 45) // change value here
+        if (noteIn <= 35) // change value here
             return true;
         else
             return false;
@@ -49,7 +50,9 @@ public:
         panningLfo.setPower(9);
         modFilter.setParams(sampleRate, 0.05f);
         key.setOscillatorParams(sampleRate);
-        key.generateNotesForModes(3);
+        key.generateNotesForModes(3); 
+        delay.setSize(sampleRate);
+        delay.setDelayTime(0.5 * sampleRate);
 
         setModulationParameters(sampleRate);  // set modulation parameters
 
@@ -191,7 +194,7 @@ public:
 
                 float totalOscs = (sineOscs.output(0) + sineOscs.output(1) + sineOscs.output(2) + sineOscs.output(3)) / 4;
 
-                float currentSample = modFilter.process(totalOscs * envVal);
+                float currentSample = modFilter.process((totalOscs + delay.process(totalOscs)) * envVal);
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -264,8 +267,7 @@ private:
     juce::SmoothedValue<float> smoothVolume;
 
     KeySignatures key;
-
-    
     float sr;
+    Delay delay;
 
 };

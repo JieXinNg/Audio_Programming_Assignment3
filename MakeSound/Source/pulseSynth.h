@@ -23,7 +23,7 @@ class pulseSynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn > 60) // change value here
+        if (noteIn > 47) // change value here
             return true;
         else
             return false;
@@ -42,10 +42,7 @@ public:
     */
     void init(float sampleRate)
     {
-
         // set sample rate for oscillators and envelop
-        sineOsc.setSampleRate(sampleRate); // might not be needed
-        sqOsc.setSampleRate(sampleRate);    // might not be needed
         env.setSampleRate(sampleRate);
         key.setOscillatorParams(sampleRate);
 
@@ -98,7 +95,7 @@ public:
         
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, *_mode, numOctaves);
-        float lfoFrequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); //velocity;
+        float lfoFrequency = velocity / 10; 
         key.setLfofreq(lfoFrequency);
 
         setADSRValues(velocity);
@@ -177,11 +174,11 @@ public:
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
-                float envVal = env.getNextSample();
+                float envVal = env.getNextSample(); // get envelop value
                 key.setPulseSpeed(*pulseSpeed); // change the pulse speed
                 key.changeFreq(); // change freq every one second
 
-                float currentSample = key.randomNoteGenerator() * envVal; // apply envelop to oscillator 
+                float currentSample = key.randomNoteGenerator() * envVal;
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)

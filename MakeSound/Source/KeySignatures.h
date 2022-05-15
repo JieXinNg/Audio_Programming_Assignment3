@@ -22,6 +22,7 @@
 #include "Oscillator.h"		// library for generating oscillators
 #include <map>				// create map to map the modes to the values of the notes
 #include <JuceHeader.h>		// library to convert midi values to frequencies
+#include "Delay.h"
 
 
 /**
@@ -66,7 +67,10 @@ public:
 		phasor.setFrequency(0.5);
 
 		lfo.setSampleRate(_sr);
-		lfo.setFrequency(1);
+		lfo.setFrequency(0.01);
+
+		delay.setSize(_sr);
+		delay.setDelayTime(0.5 * _sr);
 	}
 
 	/**
@@ -175,7 +179,7 @@ public:
 	float randomNoteGenerator()
 	{
 		float pulseVolume; 
-		float output;
+		float output = 0;
 		if (phasor.process() <= 0.5f)
 		{
 			pulseVolume = sin(2.0 * 3.142 * phasor.process());
@@ -190,16 +194,17 @@ public:
 			output = sineOsc.process();
 		}
 
-		if (randomOsc == 1)
+		else if (randomOsc == 1)
 		{
 			output = sqOsc.process();
 		}
-		if (randomOsc == 2)
+		else if (randomOsc == 2)
 		{
 			output = triOsc.process();
 		}
-		//float output = sineOsc.process();
-		return output * pulseVolume * lfo.process() * 0.25f; 
+
+		output = output * lfo.process() * 0.25 * pulseVolume;
+		return output + delay.process(output) * 0.5;   
 	}
 
 	/**
@@ -212,12 +217,12 @@ public:
 		if ((1 - phasor.process()) <= phasor.getPhaseDelta()) // change frequency when the phase is nearing 1 
 		{
 			int randomInteger = random.nextInt(numNotes - 1); // generate random integer
-			int outVal = notes[randomInteger]; // select random note from the scale
-			sineOsc.setFrequency(outVal); // set the frequency of sineOsc
+			int outVal = notes[randomInteger];				  // select random note from the scale
+			sineOsc.setFrequency(outVal);					  // set the frequency of sineOsc
 			sqOsc.setFrequency(outVal);
 			triOsc.setFrequency(outVal);
 			randomOsc = random.nextInt(3);
-			DBG(randomOsc);
+			DBG(numNotes);
 		}
 	}
 
@@ -260,4 +265,5 @@ private:
 	std::string mode;
 	int modeCount = 7;
 	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
+	Delay delay;
 };
