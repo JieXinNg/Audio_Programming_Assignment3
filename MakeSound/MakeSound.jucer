@@ -19,6 +19,8 @@
             compile="0" resource="0" file="Source/Synthesiser Starting code (sound and voice).h"/>
       <FILE id="ffhTwx" name="FMSynth.h" compile="0" resource="0" file="Source/FMSynth.h"/>
       <FILE id="LB789C" name="pulseSynth.h" compile="0" resource="0" file="Source/pulseSynth.h"/>
+      <FILE id="XkMTM7" name="OscillatorContainer.h" compile="0" resource="0"
+            file="Source/OscillatorContainer.h"/>
       <FILE id="AQpVaX" name="ModulatingFilter.h" compile="0" resource="0"
             file="Source/ModulatingFilter.h"/>
       <FILE id="pyeoDy" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>

@@ -78,6 +78,7 @@ private:
     std::atomic<float>* cuttOffMode;
     std::atomic<float>* minVal;
     std::atomic<float>* maxVal;
+    std::atomic<float>* key;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;

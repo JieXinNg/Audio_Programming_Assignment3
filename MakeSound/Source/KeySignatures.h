@@ -69,6 +69,9 @@ public:
 		lfo.setFrequency(1);
 	}
 
+	/**
+	* generate possible modes to be selected, called once before changeMode()
+	*/
 	void generateNotesForModes(int numOctaves)
 	{
 

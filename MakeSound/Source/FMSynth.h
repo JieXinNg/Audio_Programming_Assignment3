@@ -13,6 +13,8 @@
 #include "Oscillator.h"
 #include <math.h>
 #include "ModulatingFilter.h"
+#include "KeySignatures.h"
+#include "OscillatorContainer.h"
 
 // ===========================
 // ===========================
@@ -37,13 +39,17 @@ public:
     FMsynthVoice() {}
     void init(float sampleRate)
     {
+        sr = sampleRate;
+
         // set sample rate for oscillators and envelop
-        osc.setSampleRate(sampleRate);
+        sineOscs.setSampleRate(sampleRate, 4); // change the num of oscillators here
         env.setSampleRate(sampleRate);
         panningLfo.setSampleRate(sampleRate);
         panningLfo.setFrequency(0.05);
         panningLfo.setPower(9);
-        modFilter.setParams(sampleRate, 0.5f);
+        modFilter.setParams(sampleRate, 0.05f);
+        key.setOscillatorParams(sampleRate);
+        key.generateNotesForModes(3);
 
         setModulationParameters(sampleRate);  // set modulation parameters
 
@@ -69,6 +75,7 @@ public:
         volume = volumeInput;
     }
 
+
     void setModFilterParams(std::atomic<float>* _cutoffMode, std::atomic<float>* _minVal, std::atomic<float>* _maxVal)
     {
         cutoffMode = _cutoffMode;
@@ -84,13 +91,30 @@ public:
         float depths[4] = { 20, 30, 50, 70 };
 
         float phaseModFreq = sineOscsModFreq[random.nextInt(4)];
-        int phaseModDuration = sineOscsModDurations[random.nextInt(4)];
-        float fmRate = freqs[random.nextInt(4)];
-        float fmDepth = depths[random.nextInt(4)];         
+        int phaseModDuration = sineOscsModDurations[random.nextInt(4)];     
+        float modFreq[4] = { phaseModFreq, phaseModFreq, phaseModFreq,phaseModFreq };
+        int modDurations[4] = { phaseModDuration, phaseModDuration, phaseModDuration, phaseModDuration };
+        sineOscs.setPhaseModulationParams(sr, modFreq, modDurations, 4); // change the num of oscillators here
 
-        osc.setRampParams(_sampleRate, phaseModFreq, phaseModDuration);
-        //osc.setFreqModulationParams(fmRate, fmDepth); 
-        osc.setFreqModulationParams(60, 30);  // cant hear the modulation?? but maybe there is since i hear beat frequencies
+        float fmRate = freqs[random.nextInt(4)];
+        float fmDepth = depths[random.nextInt(4)];
+        float fmFreq[4] = { fmRate, fmRate, fmRate,fmRate };
+        float modDepth[4] = { fmDepth, fmDepth, fmDepth, fmDepth };
+        sineOscs.setFrequencyModutions(fmFreq, modDepth, 4); // change the num of oscillators here
+        //sineOscs.setFrequencyModutions(60, 30);  // cant hear the modulation?? but maybe there is since i hear beat frequencies
+    }
+
+    void setFrequencies()
+    {
+        std::vector<float> variation1 = { key.getNotes(0), key.getNotes(6), key.getNotes(11), key.getNotes(16) }; // 1, 7, 5, 3
+        std::vector<float> variation2 = { key.getNotes(14), key.getNotes(16), key.getNotes(18), key.getNotes(20) }; // 1, 3, 5, 7  
+        std::vector<float> variation3 = { key.getNotes(7), key.getNotes(12), key.getNotes(16), key.getNotes(20) }; // 1, 5, 3, 7
+        std::vector<float> variation4 = { key.getNotes(0), key.getNotes(4), key.getNotes(7), key.getNotes(9) }; // 1, 5, 1, 3
+        std::vector<float> variation5 = { key.getNotes(7), key.getNotes(9), key.getNotes(11), key.getNotes(13) }; // 1, 3, 5, 7
+        std::vector<float> variation6 = { key.getNotes(0), key.getNotes(4), key.getNotes(9), key.getNotes(13) }; // 1, 5, 3, 7
+        std::vector<std::vector<float>> notes = { variation1, variation2, variation3, variation4, variation5, variation6 };
+        int pickChord = random.nextInt(6);
+        sineOscs.setFrequencies(notes[pickChord], 4);
     }
 
     //--------------------------------------------------------------------------
@@ -107,9 +131,12 @@ public:
         playing = true;
         ending = false;
 
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber) + 24;
-        osc.setFrequency(freq);             // set freqeuncies 
-
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+        float mode = random.nextInt(7);
+        DBG(mode);
+        key.changeMode(freq, mode, 3);  // change num octaves to 2 to spread out chord more
+        setFrequencies();           // set freqeuncies 
+         
         env.reset(); 
         env.noteOn();
     }
@@ -162,7 +189,9 @@ public:
                 modFilter.setFilter(*cutoffMode, *minVal, *maxVal); // set filter values
                 float envVal = env.getNextSample();
 
-                float currentSample = modFilter.process((osc.process()) * envVal); // apply envelop to oscillator 
+                float totalOscs = (sineOscs.output(0) + sineOscs.output(1) + sineOscs.output(2) + sineOscs.output(3)) / 4;
+
+                float currentSample = modFilter.process(totalOscs * envVal);
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -214,7 +243,7 @@ private:
     std::atomic<float>* releaseParam;
 
     // Oscillators
-    PhaseModulationSineOsc osc;
+    OscillatorContainerPhaseSine sineOscs;
     SineOsc panningLfo;
 
     std::atomic<float>* volume;
@@ -233,4 +262,10 @@ private:
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
+
+    KeySignatures key;
+
+    
+    float sr;
+
 };

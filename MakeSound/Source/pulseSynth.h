@@ -42,13 +42,12 @@ public:
     */
     void init(float sampleRate)
     {
-        // get a copy of the sample rate value
-        sr = sampleRate;
 
         // set sample rate for oscillators and envelop
         sineOsc.setSampleRate(sampleRate); // might not be needed
         sqOsc.setSampleRate(sampleRate);    // might not be needed
         env.setSampleRate(sampleRate);
+        key.setOscillatorParams(sampleRate);
 
     }
 
@@ -96,7 +95,7 @@ public:
         float numOctaves = ceil(velocity * 3) + 1;
         
         // set freqeuncies 
-        key.setOscillatorParams(sr);
+        
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, *_mode, numOctaves);
         float lfoFrequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber); //velocity;
@@ -231,7 +230,6 @@ private:
     SquareOsc sqOsc;
 
     std::atomic<float>* volume;
-    float sr;
     std::atomic<float>* _mode;
 
     // used to set the key of sequencer 

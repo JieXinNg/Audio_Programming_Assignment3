@@ -29,7 +29,8 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
     std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 1),
     std::make_unique < juce::AudioParameterInt >("minCut", "Min cutoff value", 50 , 1000 , 1000),
-    std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 1000)
+    std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 1000),
+    std::make_unique < juce::AudioParameterChoice >("key", "Key", juce::StringArray({ "C", "D", "E", "F" }), 1)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");

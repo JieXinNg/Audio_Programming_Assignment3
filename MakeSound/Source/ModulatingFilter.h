@@ -44,7 +44,7 @@ public:
         sampleRate = _sampleRate;
         lfo.setSampleRate(_sampleRate);
         lfo.setFrequency(lfoFreq);
-        lfo.setPower(9);
+        lfo.setPower(7);
     }
 
     /**
