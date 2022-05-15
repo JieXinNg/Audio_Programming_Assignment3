@@ -47,6 +47,9 @@ public:
         env.setSampleRate(sampleRate);
         key.setOscillatorParams(sampleRate);
 
+        // smooth value setting for volume
+        smoothVolume.reset(sampleRate, 1.0f);
+        smoothVolume.setCurrentAndTargetValue(0.0);
     }
 
     /**
@@ -100,7 +103,7 @@ public:
         // set freqeuncies 
         
         key.generateNotesForModes(numOctaves);
-        key.changeMode(baseNote, mode2, numOctaves);  //*_mode, mode2 // this can be called in dsp loop if we want it to change instantly
+        key.changeMode(baseNote, mode2, numOctaves);  // baseNote should be which note? //*_mode, mode2 // this can be called in dsp loop if we want it to change instantly
         DBG(mode2);
         float lfoFrequency = velocity / 10; 
         key.setLfofreq(lfoFrequency);
@@ -175,6 +178,8 @@ public:
     {
         if (playing) // check to see if this voice should be playing
         {
+            smoothVolume.setTargetValue(*volume); // smooth value
+            float gainVal = smoothVolume.getNextValue();
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
@@ -189,7 +194,7 @@ public:
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
                     // The output sample is scaled by 0.2 so that it is not too loud by default
-                    outputBuffer.addSample(chan, sampleIndex, currentSample * *volume);
+                    outputBuffer.addSample(chan, sampleIndex, currentSample * gainVal);
                 }
 
                 if (ending)
@@ -236,8 +241,10 @@ private:
     SineOsc sineOsc;
     SquareOsc sqOsc;
 
-    std::atomic<float>* volume;
-    std::atomic<float>* _mode;
+    std::atomic<float>* volume;              // volume parameter
+    juce::SmoothedValue<float> smoothVolume; // smooth value
+
+    std::atomic<float>* _mode; // not needed
 
     // used to set the key of sequencer 
     KeySignatures key;
@@ -245,10 +252,10 @@ private:
     int numOctaves;
 
     // pulse speed, sine pulse freq, sine power
-    std::atomic<float>* pulseSpeed;
+    std::atomic<float>* pulseSpeed;     // not needed
     float pulseSpeedChange = 0.5;
 
     juce::Random random;            // random is called to select the notes to be played
-    int mode2;
+    int mode2 = 0;  // set default value
 
 };

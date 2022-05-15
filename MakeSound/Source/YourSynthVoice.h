@@ -4,13 +4,22 @@
     YourSynthVoice.h
     Created: 7 Mar 2020 4:27:57pm
 
+    Contains classes MySynthSound, MySynthVoice
+
+    Inherits from synthesiser class
+
+    Requires <JuceHeader.h>
+    Requires "Oscillator.h" to generate oscillators 
+    Requires "KeySignatures.h" to set the key of the chords
+    Requires "Delay.h" for delays
+
   ==============================================================================
 */
 
 #pragma once
 #include <JuceHeader.h>
 #include "Oscillator.h"
-#include <math.h>
+#include "KeySignatures.h"
 #include "Delay.h"
 
 // ===========================
@@ -21,7 +30,7 @@ class MySynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override 
     { 
-        if (noteIn <= 35) // change value here
+        if (noteIn <= 35) 
             return true;
         else
             return false;
@@ -46,6 +55,12 @@ public:
         delay.setSize(sampleRate);
         delay.setDelayTime(0.5 * sampleRate);
 
+        key.setOscillatorParams(sampleRate);
+        key.generateNotesForModes(4);
+
+        // smooth value setting for volume
+        smoothVolume.reset(sampleRate, 1.0f);
+        smoothVolume.setCurrentAndTargetValue(0.0);
 
         envParams.attack = 2.0f; // fade in
         envParams.decay = 0.75f;  // fade down to sustain level
@@ -53,15 +68,6 @@ public:
         envParams.release = 3.0f; // fade out
         env.setParameters(envParams); // set the envelop parameters
         
-        //setReverbParams();
-    }
-
-    /**
-    * set detune amount
-    */
-    void setDetunePointer(std::atomic<float>* detuneInput)
-    {
-        detuneAmount = detuneInput;
     }
 
     /**
@@ -74,13 +80,11 @@ public:
         volume = volumeInput;
     }
 
-    void setReverbParams()
+
+    void setMode(int _baseNote, int _mode)
     {
-        reverbParams.dryLevel = 0.8f;
-        reverbParams.wetLevel = 0.3f;
-        reverbParams.roomSize = 0.99f;
-        reverb.setParameters(reverbParams);
-        reverb.reset();
+        baseNote = _baseNote;
+        mode = _mode;
     }
 
     //--------------------------------------------------------------------------
@@ -101,12 +105,13 @@ public:
         float vel = (float) velocity * 20.0;
         velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0; // set detune paramter
 
-
+        DBG(midiNoteNumber);
         delay.setDelayTime(velocity * sr);              // set delay time according to velocity 
         setEnv(velocity, midiNoteNumber);               // set envelope according to velocity and midi
         setFrequencyVelocity(velocity, midiNoteNumber); // set frequency according to velocity and midi
         osc.setFrequency(freq);                         // set freqeuncies 
-        
+        DBG(freq);
+        DBG(mode);
 
         // reset envelopes
         env.reset(); 
@@ -147,12 +152,31 @@ public:
     void setFrequencyVelocity(float velocity, int midiNoteNumber)
     {
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + 24);
+        int scaledVelocity = ceil(velocity * 3.0) + 1;
+        int addOctave = 12 * (random.nextInt(2) + scaledVelocity);
+        DBG(addOctave);
 
         if (midiNoteNumber > 23)
         {
-            int scaledVelocity = ceil(velocity * 3.0) + 1;
-            int addOctave = 12 * (random.nextInt(2) + scaledVelocity);
-            freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + addOctave);
+            key.changeMode(baseNote, mode, 4);
+            float midiFreq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+            std::vector<float> possibleNotes = key.getNoteVector();
+            DBG(key.getNotes(5));
+
+            // if the midi is within the range of the mode
+            if (std::find(possibleNotes.begin(), possibleNotes.end(), midiFreq) != possibleNotes.end())
+            {
+                freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + addOctave);
+                DBG("first loop");
+            }
+
+            // else pick a random note from the mode
+            else
+            {
+                int pickNote = random.nextInt(7) + 7 * (random.nextInt(3));
+                freq = key.getNotes(pickNote);
+                DBG("second loop");
+            }
         }
     }
 
@@ -190,18 +214,19 @@ public:
      */
     void renderNextBlock(juce::AudioSampleBuffer& outputBuffer, int startSample, int numSamples) override
     {
-        //if (!isVoiceActive())
-        //    return;
 
         if (playing) // check to see if this voice should be playing
         {
-            //// if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
-            detuneOsc.setFrequency(freq - velocityDetune); // velocityDetune *detuneAmount
+            smoothVolume.setTargetValue(*volume); // smooth value
+            float gainVal = smoothVolume.getNextValue();
+
+            detuneOsc.setFrequency(freq - velocityDetune); // set the detune amount
 
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample();
+                float delayEnv = delay.process(envVal);
 
                 float toalOscs = osc.process() + detuneOsc.process();
                 float currentSample = (toalOscs + delay.process(toalOscs)) * envVal; // apply envelop to oscillator 
@@ -209,34 +234,27 @@ public:
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {                    
-                    outputBuffer.addSample(chan, sampleIndex, *volume * currentSample);
-                    //reverb.processMono(outputBuffer.getWritePointer(chan), currentSample); // dont hear a difference
+                    outputBuffer.addSample(chan, sampleIndex, gainVal * currentSample);
                 }
-
-                // add reverb, does not work
-                 //reverb.processStereo(outputBuffer.getWritePointer(0), outputBuffer.getWritePointer(1), currentSample);
 
                 if (ending)
                 {
-                    if (envVal < 0.0001)
+                    if (delayEnv < 0.0001)
                     {
                         clearCurrentNote();
                         playing = false;
                     }
                 }
-                //if (!env.isActive())
-                //    clearCurrentNote();
             }
         }
     }
 
     //--------------------------------------------------------------------------
-    void pitchWheelMoved(int) override 
-    {}
+    void pitchWheelMoved(int) override {}
 
     //--------------------------------------------------------------------------
-    void controllerMoved(int, int) override 
-    {}
+    void controllerMoved(int, int) override {}
+
     //--------------------------------------------------------------------------
     /**
      Can this voice play a sound. I wouldn't worry about this for the time being
@@ -251,28 +269,28 @@ public:
     //--------------------------------------------------------------------------
 private:
     //--------------------------------------------------------------------------
-    bool playing = false; // set default value for playing to be false
-    bool ending = false; // bool to determine the moment the note is released
-    juce::ADSR env; // envelope for synthesiser
-    juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+    bool playing = false;               // set default value for playing to be false
+    bool ending = false;                // bool to determine the moment the note is released
+    float sr;                           // sample rate
+    float freq;                         // frequency
 
-    std::atomic<float>* releaseParam;
+    juce::ADSR env;                     // envelope for synthesiser
+    juce::ADSR::Parameters envParams;   // create insatnce of ADSR envelop
 
     // Oscillators
     TriOsc osc;
     TriOsc detuneOsc;
 
-    std::atomic<float>* detuneAmount;
-    std::atomic<float>* volume;
-    float freq;
-    float velocityDetune;
+    float velocityDetune;                    // detune oscillator velocity
+    std::atomic<float>* volume;              // volume parameter
+    juce::SmoothedValue<float> smoothVolume; // smooth value
+    
+    // variables for setting chords
+    KeySignatures key;
+    int mode = 0;      // default value
+    int baseNote = 24; // default value
 
-    // effects
-    juce::Reverb reverb;
-    juce::Reverb::Parameters reverbParams;
-    Delay delay;
-
-    float sr;
-    juce::Random random;
+    Delay delay;            // effects
+    juce::Random random;    // to generate random values
 
 };

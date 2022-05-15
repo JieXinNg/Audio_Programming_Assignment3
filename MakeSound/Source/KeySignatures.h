@@ -79,16 +79,6 @@ public:
 	void generateNotesForModes(int numOctaves)
 	{
 
-		//reset all vectors before pushback
-		std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
-		std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
-		std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
-		std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
-		std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
-		std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
-		std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
-
-
 		numNotes = 7 * numOctaves;            // set the number of possible notes in the range
 
 		if (numOctaves > 1) // add notes if there is more than one octave
@@ -238,6 +228,14 @@ public:
 		return notes[noteDegree];
 	}
 
+	/**
+	* returns the notes (vector) based on the mode chosen 
+	*/
+	std::vector<float> getNoteVector()
+	{
+		return notes;
+	}
+
 private:
 	// variables to be set in setKey()
 	int key;                        // midi value
@@ -267,4 +265,13 @@ private:
 	int modeCount = 7;
 	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
 	Delay delay;
+
+	// modes used
+	std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
+	std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
+	std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
+	std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
+	std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
+	std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
+	std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
 };

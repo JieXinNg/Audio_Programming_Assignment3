@@ -2,7 +2,8 @@
   ==============================================================================
 
     Delay.h
-    Created: 16 Mar 2022 5:09:35pm
+    
+	Contains class Delay
 
   ==============================================================================
 */
@@ -13,6 +14,11 @@ class Delay
 {
 public:
 
+	/**
+	* outputs the delayed sample
+	* 
+	* @param inputSample (float) 
+	*/
 	float process(float inputSample)
 	{
 		float output = readVal();
@@ -92,7 +98,7 @@ public:
 	}
 
 private:
-	float* buffer;
+	float* buffer;		// set the buffer size
 	int size;
 	int readPos = 0;
 	int writePos = 0;

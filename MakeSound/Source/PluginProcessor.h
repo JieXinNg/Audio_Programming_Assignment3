@@ -71,7 +71,6 @@ private:
     juce::AudioProcessorValueTreeState avpts;
     // parameters 
     std::atomic<float>* volumeParameter;
-    std::atomic<float>* detuneParameter;
     std::atomic<float>* modeParameter;          // string to choose mode (scales)
     std::atomic<float>* pulseSpeedParameter;
     std::atomic<float>* reverbParameter;

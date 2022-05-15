@@ -2,21 +2,26 @@
   ==============================================================================
 
     FMSynth.h
-    Created: 13 May 2022 
-    Author:  s1859154
+
+    Contains classes FMSynthSound, FMsynthVoice
+
+    Inherits from synthesiser class, this is a synthesiser for producing sine oscillators with frequency modulations
+
+    Requires <JuceHeader.h>
+    Requires "OscillatorContainer.h" to generate oscillators (vectors of oscillators)
+    Requires "ModulatingFilter.h" to filter the output of oscillators
+    Requires "KeySignatures.h" to set the key of the chords
+    Requires "Delay.h" for delays
 
   ==============================================================================
 */
 
 #pragma once
 #include <JuceHeader.h>
-#include "Oscillator.h"
-#include <math.h>
+#include "OscillatorContainer.h"
 #include "ModulatingFilter.h"
 #include "KeySignatures.h"
-#include "OscillatorContainer.h"
 #include "Delay.h"
-#include "pulseSynth.h"
 
 // ===========================
 // ===========================
@@ -41,28 +46,24 @@ public:
     FMsynthVoice() {}
     void init(float sampleRate)
     {
-        sr = sampleRate;
+        sr = sampleRate; // local reference of the sample rate to be used in setModulationParameters()
 
-        // set sample rate for oscillators and envelop
-        sineOscs.setSampleRate(sampleRate, 4); // change the num of oscillators here
+        // set sample rate
+        sineOscs.setSampleRate(sampleRate, 4); // the oscillator count can be changed here
         env.setSampleRate(sampleRate);
-        panningLfo.setSampleRate(sampleRate);
-        panningLfo.setFrequency(0.05);
-        panningLfo.setPower(9);
         modFilter.setParams(sampleRate, 0.05f);
         key.setOscillatorParams(sampleRate);
         key.generateNotesForModes(3); 
         delay.setSize(sampleRate);
         delay.setDelayTime(0.5 * sampleRate);
+        setModulationParameters(sampleRate); 
 
-        setModulationParameters(sampleRate);  // set modulation parameters
-
-        // smooth value setting
+        // smooth value setting for volume
         smoothVolume.reset(sampleRate, 1.0f);
         smoothVolume.setCurrentAndTargetValue(0.0);
 
-        // envelopes
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        // ADSR envelope
+        juce::ADSR::Parameters envParams;// create instance of ADSR envelop
         envParams.attack = 2.0f;         // fade in
         envParams.decay = 0.5f;         // fade down to sustain level
         envParams.sustain = 0.5f;       // vol level
@@ -72,7 +73,9 @@ public:
     }
 
     /**
-    * set volume
+    * set volume, the input is from the interface (slider)
+    * 
+    * @param volumeInput (std::atomic<float>) pointer to volume
     */
     void setVolumePointer(std::atomic<float>* volumeInput)
     {
@@ -80,6 +83,13 @@ public:
     }
 
 
+    /**
+    * set filter parameters
+    * 
+    * @param _cutoffMode (0 - low-pass, 1 - high-pass, 2 - band-pass)
+    * @param _minVal
+    * @param _maxVal
+    */
     void setModFilterParams(std::atomic<float>* _cutoffMode, std::atomic<float>* _minVal, std::atomic<float>* _maxVal)
     {
         cutoffMode = _cutoffMode;
@@ -87,6 +97,11 @@ public:
         maxVal = _maxVal;
     }
 
+    /**
+    * set oscillator modulation parameters - randomly selected from predefined values
+    * 
+    * @param _sampleRate
+    */
     void setModulationParameters(float _sampleRate)
     {
         float sineOscsModFreq[4] = { 0.25, 0.5, 0.75, 1.0 };
@@ -105,9 +120,13 @@ public:
         float fmFreq[4] = { fmRate, fmRate, fmRate,fmRate };
         float modDepth[4] = { fmDepth, fmDepth, fmDepth, fmDepth };
         sineOscs.setFrequencyModutions(fmFreq, modDepth, 4); // change the num of oscillators here
-        //sineOscs.setFrequencyModutions(60, 30);  // cant hear the modulation?? but maybe there is since i hear beat frequencies
+
     }
 
+    /**
+    * set frequencies of the oscillators - chosen notes from predefined chords
+    * this is called whenever a key is pressed, in startNote()
+    */
     void setFrequencies()
     {
         std::vector<float> variation1 = { key.getNotes(0), key.getNotes(6), key.getNotes(11), key.getNotes(16) }; // 1, 7, 5, 3
@@ -122,9 +141,20 @@ public:
     }
 
 
+    /**
+    * outputs the mode (int) ( this is set whenever a key is pressed ) 
+    */
     int getMode()
     {
         return mode;
+    }
+
+    /**
+    * outputs the baseNote ( this is set whenever a key is pressed ) 
+    */
+    int getBaseNote()
+    {
+        return baseNote;
     }
 
     //--------------------------------------------------------------------------
@@ -141,19 +171,19 @@ public:
         playing = true;
         ending = false;
 
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber - 12);
+        baseNote = midiNoteNumber - 12;
         mode = random.nextInt(7);
-        //DBG(mode);
-        key.changeMode(freq, mode, 3);  // change num octaves to 2 to spread out chord more
+        key.changeMode(midiNoteNumber, mode, 3); 
         setFrequencies();               // set freqeuncies 
          
         env.reset(); 
         env.noteOn();
+
     }
+
     //--------------------------------------------------------------------------
-    /// Called when a MIDI noteOff message is received
     /**
-     What should be done when a note stops
+     What should be done when a note stops ( Called when a MIDI noteOff message is received )
 
      @param / unused variable
      @param allowTailOff bool to decie if the should be any volume decay
@@ -198,9 +228,10 @@ public:
 
                 modFilter.setFilter(*cutoffMode, *minVal, *maxVal); // set filter values
                 float envVal = env.getNextSample();
+                float delayEnv = delay.process(envVal);             // get the delayed evelope to determine stopping of sound (ending)
 
+                // output
                 float totalOscs = (sineOscs.output(0) + sineOscs.output(1) + sineOscs.output(2) + sineOscs.output(3)) / 4;
-
                 float currentSample = modFilter.process((totalOscs + delay.process(totalOscs)) * envVal);
 
                 // for each channel, write the currentSample float to the output
@@ -209,17 +240,10 @@ public:
                     outputBuffer.addSample(chan, sampleIndex, gainVal * currentSample);
                 }
 
-                //float* left = outputBuffer.getWritePointer(0); // access the left channel
-                //float* right = outputBuffer.getWritePointer(1); // access the right channel
-
-                //const float finalVolForChannel = 1;
-
-                //left[sampleIndex] = left[sampleIndex] * panningLfo.process(); // this is interfering with the other synthsiser's panning
-                //right[sampleIndex] = 0;
-
+                // if it is entering the ending phase
                 if (ending)
                 {
-                    if (envVal < 0.0001)
+                    if (delayEnv < 0.0001) // turn off sound when the delayed envelope is < 0.0001
                     {
                         clearCurrentNote();
                         playing = false;
@@ -230,11 +254,13 @@ public:
     }
     //--------------------------------------------------------------------------
     void pitchWheelMoved(int) override {}
+    
     //--------------------------------------------------------------------------
     void controllerMoved(int, int) override {}
+
     //--------------------------------------------------------------------------
     /**
-     Can this voice play a sound. I wouldn't worry about this for the time being
+     Can this voice play a sound.
 
      @param sound a juce::SynthesiserSound* base class pointer
      @return sound cast as a pointer to an instance of YourSynthSound
@@ -244,38 +270,34 @@ public:
         return dynamic_cast<FMSynthSound*> (sound) != nullptr;
     }
     //--------------------------------------------------------------------------
+
 private:
     //--------------------------------------------------------------------------
-    bool playing = false; // set default value for playing to be false
-    bool ending = false; // bool to determine the moment the note is released
-    juce::ADSR env; // envelope for synthesiser
-
-    std::atomic<float>* releaseParam;
+    bool playing = false;       // set default value for playing to be false
+    bool ending = false;        // bool to determine the moment the note is released
+    float sr;                   // sample rate
 
     // Oscillators
     OscillatorContainerPhaseSine sineOscs;
-    SineOsc panningLfo;
-
-    std::atomic<float>* volume;
-    float freq;
-    float velocityDetune;
+    juce::ADSR env;             // envelope for synthesiser
 
     // effects
-    juce::Reverb reverb;
-    juce::Reverb::Parameters reverbParams;
-    juce::Random random;
-
     ModulatingFilter modFilter;
+    // filter parameters
     std::atomic<float>* cutoffMode;
     std::atomic<float>* minVal;
     std::atomic<float>* maxVal;
+    
+    // volume parameter
+    std::atomic<float>* volume;
+    juce::SmoothedValue<float> smoothVolume; // smooth value
 
-    // smooth values
-    juce::SmoothedValue<float> smoothVolume;
-
+    // variables for setting chords
     KeySignatures key;
-    float sr;
-    Delay delay;
+    float baseNote;
     float mode;
+
+    Delay delay;            
+    juce::Random random;    // to generate random values
 
 };

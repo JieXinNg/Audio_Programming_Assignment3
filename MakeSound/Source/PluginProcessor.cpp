@@ -23,7 +23,6 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
 #endif
     avpts(*this, nullptr, "ParamTreeIdentifier", {
     std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.1f) ,
-    std::make_unique < juce::AudioParameterFloat >("detune", "Detune (Hz)", 0.0f , 20.0f , 2.0f) ,
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
@@ -34,7 +33,6 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
-    detuneParameter = avpts.getRawParameterValue("detune");
     modeParameter = avpts.getRawParameterValue("mode");
     pulseSpeedParameter = avpts.getRawParameterValue("pulseSpeed");
     reverbParameter = avpts.getRawParameterValue("reverbSize");
@@ -57,7 +55,6 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     for (int i = 0; i < voiceCount; i++) // set detune 
     {
         MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        v->setDetunePointer(detuneParameter);
         v->setVolumePointer(volumeParameter);
 
         FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
@@ -121,12 +118,21 @@ void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
 
     FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(0));
     int bcd = abc->getMode(); // access mode value
+    int defg = abc->getBaseNote(); // access mode value
 
-    for (int i = 0; i < voiceCount; i++) // set detune 
+
+    if (bcd >= 0 && defg > 0)
     {
-        pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
-        point->setMode2(bcd); // set the mode for pulse
+        for (int i = 0; i < voiceCount; i++)
+        {
+            pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
+            point->setMode2(bcd); // set the mode for pulse
+
+            MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
+            v->setMode(defg, bcd);
+        }
     }
+    
 
     reverbParams.roomSize = *reverbParameter;
     reverb.setParameters(reverbParams);
