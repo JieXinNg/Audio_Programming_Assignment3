@@ -143,6 +143,7 @@ public:
 		sineOsc.setFrequency(getNotes(0));											// set the default frequency
 		sqOsc.setFrequency(getNotes(0));
 		triOsc.setFrequency(getNotes(0));
+
 	}
 
 	/**

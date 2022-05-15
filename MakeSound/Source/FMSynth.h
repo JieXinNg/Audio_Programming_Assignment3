@@ -16,6 +16,7 @@
 #include "KeySignatures.h"
 #include "OscillatorContainer.h"
 #include "Delay.h"
+#include "pulseSynth.h"
 
 // ===========================
 // ===========================
@@ -25,7 +26,7 @@ class FMSynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn <= 35) // change value here
+        if (noteIn > 35 && noteIn <= 47) // change value here noteIn > 35 && noteIn <= 47
             return true;
         else
             return false;
@@ -120,6 +121,12 @@ public:
         sineOscs.setFrequencies(notes[pickChord], 4);
     }
 
+
+    int getMode()
+    {
+        return mode;
+    }
+
     //--------------------------------------------------------------------------
     /**
      What should be done when a note starts
@@ -134,11 +141,11 @@ public:
         playing = true;
         ending = false;
 
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-        float mode = random.nextInt(7);
-        DBG(mode);
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber - 12);
+        mode = random.nextInt(7);
+        //DBG(mode);
         key.changeMode(freq, mode, 3);  // change num octaves to 2 to spread out chord more
-        setFrequencies();           // set freqeuncies 
+        setFrequencies();               // set freqeuncies 
          
         env.reset(); 
         env.noteOn();
@@ -269,5 +276,6 @@ private:
     KeySignatures key;
     float sr;
     Delay delay;
+    float mode;
 
 };

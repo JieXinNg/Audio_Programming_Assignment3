@@ -11,6 +11,7 @@
 #include <JuceHeader.h>
 #include "Oscillator.h"
 #include <math.h>
+#include "Delay.h"
 
 // ===========================
 // ===========================
@@ -20,7 +21,7 @@ class MySynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override 
     { 
-        if (noteIn > 35 && noteIn <= 47) // change value here
+        if (noteIn <= 35) // change value here
             return true;
         else
             return false;
@@ -35,13 +36,17 @@ public:
     MySynthVoice() {}
     void init(float sampleRate)
     {
+        sr = sampleRate;
 
         // set sample rate for oscillators and envelop
         osc.setSampleRate(sampleRate);
         detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
-        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        delay.setSize(sampleRate);
+        delay.setDelayTime(0.5 * sampleRate);
+
+
         envParams.attack = 2.0f; // fade in
         envParams.decay = 0.75f;  // fade down to sustain level
         envParams.sustain = 0.25f; // vol level
@@ -60,7 +65,9 @@ public:
     }
 
     /**
-    * set volume
+    * set pointer to volume parameter
+    * 
+    * @param volumeInput pointer to volume input
     */
     void setVolumePointer(std::atomic<float>* volumeInput)
     {
@@ -73,12 +80,12 @@ public:
         reverbParams.wetLevel = 0.3f;
         reverbParams.roomSize = 0.99f;
         reverb.setParameters(reverbParams);
-        //reverb.reset();
+        reverb.reset();
     }
 
     //--------------------------------------------------------------------------
     /**
-     What should be done when a note starts
+     Called when a note starts
 
      @param midiNoteNumber
      @param velocity
@@ -87,43 +94,74 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        float vel = (float) velocity * 20.0;
-        velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0;
-        float envelopeRelease = velocity * 12.0f;
-
+        // set bool values
         playing = true;
         ending = false;
 
-        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-        osc.setFrequency(freq); // set freqeuncies 
+        float vel = (float) velocity * 20.0;
+        velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0; // set detune paramter
 
-        //DBG(1 / (float) pow((vel + 1), 1));
 
-        //// create different envelops based on the velocity of the note
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.2f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.5f; // vol level
-        //envParams.release = 1 / (float) pow((vel + 1), 1); // fade out
-        //env.setParameters(envParams); // set the envelop parameters
-
-        //// envelopes
-        //juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
-        //envParams.attack = 0.2f; // fade in
-        //envParams.decay = 0.25f;  // fade down to sustain level
-        //envParams.sustain = 0.7f; // vol level
-        //envParams.release = envelopeRelease; // fade out
-        //env.setParameters(envParams); // set the envelop parameters
+        delay.setDelayTime(velocity * sr);              // set delay time according to velocity 
+        setEnv(velocity, midiNoteNumber);               // set envelope according to velocity and midi
+        setFrequencyVelocity(velocity, midiNoteNumber); // set frequency according to velocity and midi
+        osc.setFrequency(freq);                         // set freqeuncies 
         
-        env.reset(); // can delete this if we dont want it to reset
+
+        // reset envelopes
+        env.reset(); 
         env.noteOn();
+
     }
+
+    /**
+    * set envelope parameters based on velocity and midi
+    * 
+    * @param velocity (float)
+    * @param midiNoteNumber (int) 
+    */
+    void setEnv(float velocity, int midiNoteNumber)
+    {
+        if (velocity > 0.75f && midiNoteNumber > 23)
+        {
+            envParams.attack = juce::jmap(random.nextFloat(), 0.01f, 0.05f); // fade in
+            envParams.sustain = juce::jmap(random.nextFloat(), 0.01f, 0.05f); // vol level
+            envParams.release = juce::jmap(random.nextFloat(), 0.25f, 0.75f); // fade out
+            env.setParameters(envParams);                                     // set the envelop parameters
+        }
+
+        else
+        {
+            float envelopeRelease = velocity * 12.0f;
+            envParams.release = envelopeRelease;                            // fade out
+            env.setParameters(envParams);                                   // set the envelop parameters
+        }
+    }
+
+    /** 
+    * frequency based on velocity and midi
+    *
+    * @param velocity (float)
+    * @param midiNoteNumber (int)
+    */
+    void setFrequencyVelocity(float velocity, int midiNoteNumber)
+    {
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + 24);
+
+        if (midiNoteNumber > 23)
+        {
+            int scaledVelocity = ceil(velocity * 3.0) + 1;
+            int addOctave = 12 * (random.nextInt(2) + scaledVelocity);
+            freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + addOctave);
+        }
+    }
+
     //--------------------------------------------------------------------------
     /// Called when a MIDI noteOff message is received
     /**
      What should be done when a note stops
 
-     @param / unused variable
+     @param velocity (unused variable)
      @param allowTailOff bool to decie if the should be any volume decay
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
@@ -138,13 +176,6 @@ public:
             clearCurrentNote();
             playing = false;
         }
-
-        //env.noteOff();
-
-        //if (! allowTailOff || ! env.isActive())
-        //{
-        //    clearCurrentNote();
-        //}
     }
 
     //--------------------------------------------------------------------------
@@ -172,7 +203,8 @@ public:
             {
                 float envVal = env.getNextSample();
 
-                float currentSample = (osc.process() + detuneOsc.process()) * envVal; // apply envelop to oscillator 
+                float toalOscs = osc.process() + detuneOsc.process();
+                float currentSample = (toalOscs + delay.process(toalOscs)) * envVal; // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -197,10 +229,14 @@ public:
             }
         }
     }
+
     //--------------------------------------------------------------------------
-    void pitchWheelMoved(int) override {}
+    void pitchWheelMoved(int) override 
+    {}
+
     //--------------------------------------------------------------------------
-    void controllerMoved(int, int) override {}
+    void controllerMoved(int, int) override 
+    {}
     //--------------------------------------------------------------------------
     /**
      Can this voice play a sound. I wouldn't worry about this for the time being
@@ -218,6 +254,7 @@ private:
     bool playing = false; // set default value for playing to be false
     bool ending = false; // bool to determine the moment the note is released
     juce::ADSR env; // envelope for synthesiser
+    juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
 
     std::atomic<float>* releaseParam;
 
@@ -233,5 +270,9 @@ private:
     // effects
     juce::Reverb reverb;
     juce::Reverb::Parameters reverbParams;
+    Delay delay;
+
+    float sr;
+    juce::Random random;
 
 };

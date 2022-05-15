@@ -14,6 +14,7 @@
 #include "Oscillator.h"
 #include <math.h>
 #include "KeySignatures.h"
+#include "FMSynth.h"
 
 // ===========================
 // ===========================
@@ -56,6 +57,11 @@ public:
         _mode = mode;
     }
 
+    void setMode2(int _mode2)
+    {
+        mode2 = _mode2;
+    }
+
     /**
     * set volume
     */
@@ -94,7 +100,8 @@ public:
         // set freqeuncies 
         
         key.generateNotesForModes(numOctaves);
-        key.changeMode(baseNote, *_mode, numOctaves);
+        key.changeMode(baseNote, mode2, numOctaves);  //*_mode, mode2 // this can be called in dsp loop if we want it to change instantly
+        DBG(mode2);
         float lfoFrequency = velocity / 10; 
         key.setLfofreq(lfoFrequency);
 
@@ -120,8 +127,6 @@ public:
         {
             sustainParameter = juce::jmap(random.nextFloat(), 0.25f, 0.9f);
         }
-
-        DBG(sustainParameter);
 
         // envelopes
         juce::ADSR::Parameters envParams;       // create insatnce of ADSR envelop
@@ -175,7 +180,7 @@ public:
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
                 float envVal = env.getNextSample(); // get envelop value
-                key.setPulseSpeed(*pulseSpeed); // change the pulse speed
+                key.setPulseSpeed(pulseSpeedChange); // change the pulse speed  //*pulseSpeed
                 key.changeFreq(); // change freq every one second
 
                 float currentSample = key.randomNoteGenerator() * envVal;
@@ -199,9 +204,14 @@ public:
         }
     }
     //--------------------------------------------------------------------------
-    void pitchWheelMoved(int) override {}
+    void pitchWheelMoved(int) override 
+    {}
     //--------------------------------------------------------------------------
-    void controllerMoved(int, int) override {}
+    void controllerMoved(int amount1, int amount2) override 
+    {
+        pulseSpeedChange = amount2 / 127.0 * 2.9;
+    }
+
     //--------------------------------------------------------------------------
     /**
      Can this voice play a sound. I wouldn't worry about this for the time being
@@ -236,7 +246,9 @@ private:
 
     // pulse speed, sine pulse freq, sine power
     std::atomic<float>* pulseSpeed;
+    float pulseSpeedChange = 0.5;
 
     juce::Random random;            // random is called to select the notes to be played
+    int mode2;
 
 };

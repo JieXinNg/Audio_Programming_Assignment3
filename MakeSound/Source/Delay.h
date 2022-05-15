@@ -12,12 +12,6 @@
 class Delay
 {
 public:
-	float* buffer;
-	int size;
-
-	int readPos = 0;
-	int writePos = 0;
-	int delayTimeInSamples;
 
 	float process(float inputSample)
 	{
@@ -26,6 +20,10 @@ public:
 
 		return output;
 	}
+
+	/**
+	* called in process()
+	*/
 	float readVal()
 	{
 		// get current value at readPos
@@ -41,6 +39,9 @@ public:
 		return outVal;
 	}
 
+	/**
+	* called in process()
+	*/
 	void writeVal(float inputSample)
 	{
 		// store current value at writePos
@@ -53,7 +54,6 @@ public:
 		{
 			writePos = 0;
 		}
-
 	}
 	
 	/**
@@ -86,14 +86,16 @@ public:
 		readPos = writePos - delayTimeInSamples;
 
 		if (readPos < 0)
+		{
 			readPos += size;
-
-		//if (writePos >= _delayTimeInSamples)
-		//	readPos = writePos - _delayTimeInSamples;
-		//else
-		//	readPos = _delayTimeInSamples - writePos;
+		}
 	}
 
 private:
+	float* buffer;
+	int size;
+	int readPos = 0;
+	int writePos = 0;
+	int delayTimeInSamples;
 
 };

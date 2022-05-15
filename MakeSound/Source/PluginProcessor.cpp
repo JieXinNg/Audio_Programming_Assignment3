@@ -48,6 +48,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         synthPulse.addVoice(new pulseSynthVoice());
         synth2.addVoice(new FMsynthVoice());
     }
+
     synth.addSound( new MySynthSound() );
     synthPulse.addSound(new pulseSynthSound());
     synth2.addSound(new FMSynthSound());
@@ -58,14 +59,19 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
         MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
         v->setDetunePointer(detuneParameter);
         v->setVolumePointer(volumeParameter);
+
+        FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
+        abc->setVolumePointer(volumeParameter);
+        abc->setModFilterParams(cuttOffMode, minVal, maxVal);
+        //int bcd = abc->getMode();
+        //DBG(bcd);
+
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
         point->setMode(modeParameter);
         point->setVolumePointer(volumeParameter);
         point->setMode(modeParameter);
         point->setPulseSpeed(pulseSpeedParameter);
-        FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
-        abc->setVolumePointer(volumeParameter);
-        abc->setModFilterParams(cuttOffMode, minVal, maxVal);
+
     }
 }
 
@@ -111,6 +117,17 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
 
 void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+
+
+    FMsynthVoice* abc = dynamic_cast<FMsynthVoice*>(synth2.getVoice(0));
+    int bcd = abc->getMode(); // access mode value
+
+    for (int i = 0; i < voiceCount; i++) // set detune 
+    {
+        pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
+        point->setMode2(bcd); // set the mode for pulse
+    }
+
     reverbParams.roomSize = *reverbParameter;
     reverb.setParameters(reverbParams);
 
