@@ -104,7 +104,7 @@ public:
         
         key.generateNotesForModes(numOctaves);
         key.changeMode(baseNote, mode2, numOctaves);  // baseNote should be which note? //*_mode, mode2 // this can be called in dsp loop if we want it to change instantly
-        DBG(mode2);
+        //DBG(mode2);
         float lfoFrequency = velocity / 10; 
         key.setLfofreq(lfoFrequency);
 

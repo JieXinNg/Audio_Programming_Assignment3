@@ -22,14 +22,15 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
                        ),
 #endif
     avpts(*this, nullptr, "ParamTreeIdentifier", {
-    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.1f) ,
+    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.5f) ,
     std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
     std::make_unique < juce::AudioParameterFloat >("pulseSpeed", "Pulse Speed", 0.1f , 3.0f , 0.5f),
     std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
-    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 1),
+    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 3),
     std::make_unique < juce::AudioParameterInt >("minCut", "Min cutoff value", 50 , 1000 , 1000),
     std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 1000),
-    std::make_unique < juce::AudioParameterChoice >("key", "Key", juce::StringArray({ "C", "D", "E", "F" }), 1)
+    std::make_unique < juce::AudioParameterChoice >("key", "Key", juce::StringArray({ "C", "D", "E", "F" }), 1),
+    std::make_unique < juce::AudioParameterBool >("ionian", "Ionian / Major", true)
         })
 {   // constructors
     volumeParameter = avpts.getRawParameterValue("volume");
@@ -39,6 +40,7 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
     cuttOffMode = avpts.getRawParameterValue("cutOffMode");
     minVal = avpts.getRawParameterValue("minCut");
     maxVal = avpts.getRawParameterValue("maxCut");
+    Ionian = avpts.getRawParameterValue("ionian");  // returns 1 or 0 
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {

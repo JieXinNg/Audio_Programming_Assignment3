@@ -194,7 +194,7 @@ public:
 			output = triOsc.process();
 		}
 
-		output = output * lfo.process() * 0.25 * pulseVolume;
+		output = output * lfo.process() * 0.5 * pulseVolume;
 		return output + delay.process(output) * 0.5;   
 	}
 
@@ -213,7 +213,7 @@ public:
 			sqOsc.setFrequency(outVal);
 			triOsc.setFrequency(outVal);
 			randomOsc = random.nextInt(3);
-			DBG(numNotes);
+			//DBG(numNotes);
 		}
 	}
 

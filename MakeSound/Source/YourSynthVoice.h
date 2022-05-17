@@ -48,7 +48,9 @@ public:
         sr = sampleRate;
 
         // set sample rate for oscillators and envelop
-        osc.setSampleRate(sampleRate);
+        triOsc.setSampleRate(sampleRate);
+        sineOsc.setSampleRate(sampleRate);
+        sqOsc.setSampleRate(sampleRate);
         detuneOsc.setSampleRate(sampleRate);
         env.setSampleRate(sampleRate);
 
@@ -109,9 +111,11 @@ public:
         delay.setDelayTime(velocity * sr);              // set delay time according to velocity 
         setEnv(velocity, midiNoteNumber);               // set envelope according to velocity and midi
         setFrequencyVelocity(velocity, midiNoteNumber); // set frequency according to velocity and midi
-        osc.setFrequency(freq);                         // set freqeuncies 
-        DBG(freq);
-        DBG(mode);
+        
+        // set freqeuncies 
+        triOsc.setFrequency(freq);                      
+        sineOsc.setFrequency(freq);
+        sqOsc.setFrequency(freq);
 
         // reset envelopes
         env.reset(); 
@@ -127,19 +131,54 @@ public:
     */
     void setEnv(float velocity, int midiNoteNumber)
     {
-        if (velocity > 0.75f && midiNoteNumber > 23)
+        if (midiNoteNumber > 23) //  if midi > 23
         {
-            envParams.attack = juce::jmap(random.nextFloat(), 0.01f, 0.05f); // fade in
-            envParams.sustain = juce::jmap(random.nextFloat(), 0.01f, 0.05f); // vol level
-            envParams.release = juce::jmap(random.nextFloat(), 0.25f, 0.75f); // fade out
-            env.setParameters(envParams);                                     // set the envelop parameters
+            // randomise the combination of oscillators
+            triVolume = random.nextInt(2);
+            sineVolume = random.nextInt(2);
+            sqVolume = random.nextInt(2);
+            oscCount = triVolume + sineVolume + sqVolume;
+            if (oscCount == 0)
+            {
+                triVolume = 1;
+                oscCount = 1;
+            }
+            DBG(oscCount);
+            DBG(sqVolume);
+
+            if (velocity > 0.6f) // shorter attack, sustain and release if velocity is > 0.6f
+            {
+                envParams.attack = juce::jmap(random.nextFloat(), 0.01f, 0.05f);  // fade in
+                envParams.sustain = juce::jmap(random.nextFloat(), 0.01f, 0.05f); // vol level
+                envParams.release = juce::jmap(random.nextFloat(), 0.25f, 0.75f); // fade out
+                env.setParameters(envParams);                                     // set the envelop parameters
+
+                float a = envParams.attack;
+                DBG(a);
+            }
+
+            else
+            {
+                float envelopeRelease = velocity * 5.0f;
+                envParams.release = envelopeRelease;                            // fade out
+                env.setParameters(envParams);                                   // set the envelop parameters
+            }
         }
 
-        else
+        else 
         {
+            clearCurrentNote(); // let play
+
+            // only play triOsc if midi <= 23
+            triVolume = 1;
+            sineVolume = 0;
+            sqVolume = 0;
+            oscCount = triVolume + sineVolume + sqVolume;
+
             float envelopeRelease = velocity * 12.0f;
             envParams.release = envelopeRelease;                            // fade out
             env.setParameters(envParams);                                   // set the envelop parameters
+
         }
     }
 
@@ -154,20 +193,18 @@ public:
         freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + 24);
         int scaledVelocity = ceil(velocity * 3.0) + 1;
         int addOctave = 12 * (random.nextInt(2) + scaledVelocity);
-        DBG(addOctave);
 
         if (midiNoteNumber > 23)
         {
             key.changeMode(baseNote, mode, 4);
             float midiFreq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
             std::vector<float> possibleNotes = key.getNoteVector();
-            DBG(key.getNotes(5));
 
             // if the midi is within the range of the mode
             if (std::find(possibleNotes.begin(), possibleNotes.end(), midiFreq) != possibleNotes.end())
             {
                 freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + addOctave);
-                DBG("first loop");
+
             }
 
             // else pick a random note from the mode
@@ -175,7 +212,7 @@ public:
             {
                 int pickNote = random.nextInt(7) + 7 * (random.nextInt(3));
                 freq = key.getNotes(pickNote);
-                DBG("second loop");
+
             }
         }
     }
@@ -227,9 +264,11 @@ public:
             {
                 float envVal = env.getNextSample();
                 float delayEnv = delay.process(envVal);
-
-                float toalOscs = osc.process() + detuneOsc.process();
-                float currentSample = (toalOscs + delay.process(toalOscs)) * envVal; // apply envelop to oscillator 
+                float totalOscs; // = (triOsc.process() * triVolume + sineOsc.process() * sineVolume + sqOsc.process() * sqVolume) / oscCount;
+                totalOscs = (triOsc.process() * triVolume + sineOsc.process() * sineVolume + sqOsc.process() * sqVolume / 2) / oscCount;
+                totalOscs = (totalOscs + detuneOsc.process()) / 2;
+                float delayOutput = delay.process(totalOscs) * 0.5;
+                float currentSample = (totalOscs * envVal + delayOutput * delayEnv); // apply envelop to oscillator 
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -239,9 +278,8 @@ public:
 
                 if (ending)
                 {
-                    if (delayEnv < 0.0001)
+                    if (delayEnv < 0.0001 && envVal < 0.0001) // turn off sound when both envelopes are < 0.0001
                     {
-                        clearCurrentNote();
                         playing = false;
                     }
                 }
@@ -278,8 +316,16 @@ private:
     juce::ADSR::Parameters envParams;   // create insatnce of ADSR envelop
 
     // Oscillators
-    TriOsc osc;
+    TriOsc triOsc;
+    SineOsc sineOsc;
+    SquareOsc sqOsc;
     TriOsc detuneOsc;
+
+    // volume for each oscillator
+    int triVolume;
+    int sineVolume;
+    int sqVolume;
+    int oscCount;
 
     float velocityDetune;                    // detune oscillator velocity
     std::atomic<float>* volume;              // volume parameter

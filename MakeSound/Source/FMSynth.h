@@ -168,6 +168,8 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
+        env.reset();
+        env.noteOn();
         playing = true;
         ending = false;
 
@@ -176,9 +178,6 @@ public:
         key.changeMode(midiNoteNumber, mode, 3); 
         setFrequencies();               // set freqeuncies 
          
-        env.reset(); 
-        env.noteOn();
-
     }
 
     //--------------------------------------------------------------------------
@@ -192,11 +191,13 @@ public:
     {
         if (allowTailOff) // allow slow release of note
         {
+            DBG("allow tail off");
             env.noteOff();
             ending = true;
         }
         else // shut off note
         {
+            DBG("stop note else statement");
             clearCurrentNote();
             playing = false;
         }
@@ -223,16 +224,19 @@ public:
             // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample; sampleIndex < (startSample + numSamples); sampleIndex++)
             {
+                
                 smoothVolume.setTargetValue(*volume); // smooth value
                 float gainVal = smoothVolume.getNextValue();
 
                 modFilter.setFilter(*cutoffMode, *minVal, *maxVal); // set filter values
                 float envVal = env.getNextSample();
-                float delayEnv = delay.process(envVal);             // get the delayed evelope to determine stopping of sound (ending)
+                float delayEnv = delay.process(envVal);
 
-                // output
+                // outputs of oscillators
                 float totalOscs = (sineOscs.output(0) + sineOscs.output(1) + sineOscs.output(2) + sineOscs.output(3)) / 4;
-                float currentSample = modFilter.process((totalOscs + delay.process(totalOscs)) * envVal);
+                float delayOutput = delay.process(totalOscs) * 0.5;
+                // applt filter to output
+                float currentSample = modFilter.process(totalOscs * envVal + delayOutput * delayEnv) / 2;
 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
@@ -243,7 +247,7 @@ public:
                 // if it is entering the ending phase
                 if (ending)
                 {
-                    if (delayEnv < 0.0001) // turn off sound when the delayed envelope is < 0.0001
+                    if (delayEnv < 0.0001 && envVal < 0.0001) // turn off sound when both envelopes are < 0.0001
                     {
                         clearCurrentNote();
                         playing = false;

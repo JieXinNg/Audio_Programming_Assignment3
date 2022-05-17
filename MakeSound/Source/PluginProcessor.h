@@ -78,6 +78,7 @@ private:
     std::atomic<float>* minVal;
     std::atomic<float>* maxVal;
     std::atomic<float>* key;
+    std::atomic<float>* Ionian;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
