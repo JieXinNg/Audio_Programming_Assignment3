@@ -111,6 +111,7 @@ public:
 		}
 	}
 
+
 	void changeMode(int _baseNote, float _mode, int numOctaves)
 	{
 		std::vector<float> _notes;       // vector to contain the generated notes for the scale
@@ -270,8 +271,8 @@ private:
 	std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
 	std::vector<int> dorian = { 0, 1, 3, 5, 6, 8, 10 };
 	std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
-	std::vector<int> lydian = { 0, 1, 3, 5, 7, 8, 10 };
-	std::vector<int> mixolydian = { 0, 1, 3, 5, 7, 8, 10 };
+	std::vector<int> lydian = { 0, 2, 4, 6, 7, 9, 11 };
+	std::vector<int> mixolydian = { 0, 2, 4, 5, 7, 9, 10 };
 	std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
-	std::vector<int> locrian = { 0, 2, 3, 5, 7, 8, 10 };
+	std::vector<int> locrian = { 0, 1, 3, 5, 6, 8, 10 };
 };

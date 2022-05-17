@@ -72,20 +72,30 @@ private:
     // parameters 
     std::atomic<float>* volumeParameter;
     std::atomic<float>* modeParameter;          // string to choose mode (scales)
-    std::atomic<float>* pulseSpeedParameter;
     std::atomic<float>* reverbParameter;
     std::atomic<float>* cuttOffMode;
     std::atomic<float>* minVal;
     std::atomic<float>* maxVal;
-    std::atomic<float>* key;
+
+    // modes
     std::atomic<float>* Ionian;
+    std::atomic<float>* Dorian;
+    std::atomic<float>* Phrygian;
+    std::atomic<float>* Lydian; 
+    std::atomic<float>* Mixolydian;
+    std::atomic<float>* Aeolian;
+    std::atomic<float>* Locrian;
+    std::vector<int> modeOn;
+    int modeCount = 7;
 
     // smooth values
     juce::SmoothedValue<float> smoothVolume;
     
 //    juce::AudioBuffer<float> audioBuffer;
-    SineOsc lfo1;
-    SineOsc lfo2;
+    SineOsc leftPan;
+    SineOsc rightPan;
+
+    int activeVoice;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)

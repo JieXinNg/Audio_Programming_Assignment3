@@ -64,10 +64,10 @@ public:
 
         // ADSR envelope
         juce::ADSR::Parameters envParams;// create instance of ADSR envelop
-        envParams.attack = 2.0f;         // fade in
+        envParams.attack = 2.0f;         // fade in 
         envParams.decay = 0.5f;         // fade down to sustain level
         envParams.sustain = 0.5f;       // vol level
-        envParams.release = 4.0f;       // fade out
+        envParams.release = 3.0f;       // fade out 
         env.setParameters(envParams);   // set the envelop parameters
 
     }
@@ -117,7 +117,7 @@ public:
 
         float fmRate = freqs[random.nextInt(4)];
         float fmDepth = depths[random.nextInt(4)];
-        float fmFreq[4] = { fmRate, fmRate, fmRate,fmRate };
+        float fmFreq[4] = { fmRate, fmRate, fmRate, fmRate };
         float modDepth[4] = { fmDepth, fmDepth, fmDepth, fmDepth };
         sineOscs.setFrequencyModutions(fmFreq, modDepth, 4); // change the num of oscillators here
 
@@ -157,6 +157,26 @@ public:
         return baseNote;
     }
 
+    /**
+    * select the modes that you want to be used
+    * 
+    * @param _selectedMode (setModeLimit(std::vector<int>) vector of modes (the number of each mode)
+    * e.g.: { 0, 1, 4} would be ionian, dorian, mixolydian
+    */
+    void setModeLimit(std::vector<int> _selectedMode)
+    {
+        selectedMode = _selectedMode;
+    }
+
+    /**
+    * returns the number of voice used by synthesiser
+    */
+    int getVoiceUsed()
+    {
+        return voiceUsed;
+    }
+
+
     //--------------------------------------------------------------------------
     /**
      What should be done when a note starts
@@ -168,14 +188,22 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
+        voiceUsed += 1;
+
+
         env.reset();
         env.noteOn();
         playing = true;
         ending = false;
 
         baseNote = midiNoteNumber - 12;
-        mode = random.nextInt(7);
-        key.changeMode(midiNoteNumber, mode, 3); 
+        int modeCount = selectedMode.size();
+        int randomMode = random.nextInt(modeCount);
+        
+        mode = selectedMode[randomMode];
+        
+        
+        key.changeMode(midiNoteNumber, mode, 3);
         setFrequencies();               // set freqeuncies 
          
     }
@@ -191,15 +219,15 @@ public:
     {
         if (allowTailOff) // allow slow release of note
         {
-            DBG("allow tail off");
             env.noteOff();
             ending = true;
+
         }
         else // shut off note
         {
-            DBG("stop note else statement");
             clearCurrentNote();
             playing = false;
+
         }
     }
 
@@ -238,6 +266,7 @@ public:
                 // applt filter to output
                 float currentSample = modFilter.process(totalOscs * envVal + delayOutput * delayEnv) / 2;
 
+
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan < outputBuffer.getNumChannels(); chan++)
                 {
@@ -247,10 +276,15 @@ public:
                 // if it is entering the ending phase
                 if (ending)
                 {
-                    if (delayEnv < 0.0001 && envVal < 0.0001) // turn off sound when both envelopes are < 0.0001
+                    if (/*delayEnv < 0.0001 &&*/ envVal < 0.0001) // turn off sound when both envelopes are < 0.0001
                     {
                         clearCurrentNote();
                         playing = false;
+
+                        if (voiceUsed > 0)
+                        {
+                            voiceUsed -= 1;
+                        }
                     }
                 }
             }
@@ -303,5 +337,7 @@ private:
 
     Delay delay;            
     juce::Random random;    // to generate random values
+    std::vector<int> selectedMode = { 0 };
+    int voiceUsed = 0;
 
 };

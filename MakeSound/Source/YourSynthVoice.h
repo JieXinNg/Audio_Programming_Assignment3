@@ -82,7 +82,11 @@ public:
         volume = volumeInput;
     }
 
-
+    /*
+    * 
+    * @param _baseNote (int) midi base note
+    * @param _mode (int) mode number, e.g. 1 = dorian
+    */
     void setMode(int _baseNote, int _mode)
     {
         baseNote = _baseNote;
@@ -107,7 +111,7 @@ public:
         float vel = (float) velocity * 20.0;
         velocityDetune = (float) exp(0.2 * vel) / (float) exp(4.0) * 20.0; // set detune paramter
 
-        DBG(midiNoteNumber);
+        //DBG(midiNoteNumber);
         delay.setDelayTime(velocity * sr);              // set delay time according to velocity 
         setEnv(velocity, midiNoteNumber);               // set envelope according to velocity and midi
         setFrequencyVelocity(velocity, midiNoteNumber); // set frequency according to velocity and midi
@@ -143,8 +147,8 @@ public:
                 triVolume = 1;
                 oscCount = 1;
             }
-            DBG(oscCount);
-            DBG(sqVolume);
+            //DBG(oscCount);
+            //DBG(sqVolume);
 
             if (velocity > 0.6f) // shorter attack, sustain and release if velocity is > 0.6f
             {
@@ -154,7 +158,7 @@ public:
                 env.setParameters(envParams);                                     // set the envelop parameters
 
                 float a = envParams.attack;
-                DBG(a);
+                //DBG(a);
             }
 
             else
@@ -204,6 +208,7 @@ public:
             if (std::find(possibleNotes.begin(), possibleNotes.end(), midiFreq) != possibleNotes.end())
             {
                 freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber + addOctave);
+                DBG("within range");
 
             }
 
@@ -212,7 +217,7 @@ public:
             {
                 int pickNote = random.nextInt(7) + 7 * (random.nextInt(3));
                 freq = key.getNotes(pickNote);
-
+                DBG("not within range");
             }
         }
     }
