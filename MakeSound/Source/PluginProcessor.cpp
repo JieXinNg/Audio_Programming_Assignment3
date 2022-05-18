@@ -22,23 +22,27 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
                        ),
 #endif
     avpts(*this, nullptr, "ParamTreeIdentifier", {
-    std::make_unique < juce::AudioParameterFloat >("volume", "Volume", 0.0f , 1.0f , 0.5f) ,
-    std::make_unique < juce::AudioParameterChoice >("mode", "Mode", juce::StringArray({ "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" }), 0) ,
-    std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", 0.01f , 0.99f , 0.75f),
-    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 3),
+    std::make_unique < juce::AudioParameterFloat >("topVolume", "Top Synth Volume", 0.0f , 1.0f , 0.8f) ,
+    std::make_unique < juce::AudioParameterFloat >("middleVolume", "Middle Synth Volume", 0.0f , 1.0f , 0.6f) ,
+    std::make_unique < juce::AudioParameterFloat >("bottomVolume", "Bottom Synth Volume", 0.0f , 1.0f , 0.8f) ,
+    std::make_unique < juce::AudioParameterFloat >("reverbSize", "Reverb Size", juce::NormalisableRange<float>(0.01, 0.99, 0.05, 1.75) , 0.75f),
+    std::make_unique < juce::AudioParameterChoice >("cutOffMode", "Middle Synth Filter Type", juce::StringArray({ "Low-pass", "High-pass", "Band-pass", "None" }), 2),
     std::make_unique < juce::AudioParameterInt >("minCut", "Min cutoff value", 50 , 1000 , 200),
-    std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 1000),
+    std::make_unique < juce::AudioParameterInt >("maxCut", "Max cutoff value", 50 , 1000 , 500),
     std::make_unique < juce::AudioParameterBool >("ionian", "Ionian / Major", true),
-    std::make_unique < juce::AudioParameterBool >("dorian", "Dorian", false),
-    std::make_unique < juce::AudioParameterBool >("phrygian", "Phrygian", false),
-    std::make_unique < juce::AudioParameterBool >("lydian", "Lydian", false),
-    std::make_unique < juce::AudioParameterBool >("mixolydian", "Mixolydian", false),
-    std::make_unique < juce::AudioParameterBool >("aeolian", "Aeolian", false),
-    std::make_unique < juce::AudioParameterBool >("locrian", "Locrian", false)
+    std::make_unique < juce::AudioParameterBool >("dorian", "Dorian", true),
+    std::make_unique < juce::AudioParameterBool >("phrygian", "Phrygian", true),
+    std::make_unique < juce::AudioParameterBool >("lydian", "Lydian", true),
+    std::make_unique < juce::AudioParameterBool >("mixolydian", "Mixolydian", true),
+    std::make_unique < juce::AudioParameterBool >("aeolian", "Aeolian", true),
+    std::make_unique < juce::AudioParameterBool >("locrian", "Locrian", true)
         })
-{   // constructors
-    volumeParameter = avpts.getRawParameterValue("volume");
-    modeParameter = avpts.getRawParameterValue("mode");
+{   
+   
+    // constructors
+    volumeParameterTop = avpts.getRawParameterValue("topVolume");
+    volumeParameterMiddle = avpts.getRawParameterValue("middleVolume");
+    volumeParameterBottom = avpts.getRawParameterValue("bottomVolume");
     reverbParameter = avpts.getRawParameterValue("reverbSize");
     cuttOffMode = avpts.getRawParameterValue("cutOffMode");
     minVal = avpts.getRawParameterValue("minCut");
@@ -53,31 +57,27 @@ MakeSoundAudioProcessor::MakeSoundAudioProcessor()
 
     for (int i = 0; i < voiceCount; i++) // loop to add voice
     {
-        synth.addVoice( new MySynthVoice() );
+        synth.addVoice( new MelodyVoice() );
         synthPulse.addVoice(new pulseSynthVoice());
         synth2.addVoice(new FMsynthVoice());
     }
 
-    synth.addSound( new MySynthSound() );
+    synth.addSound( new MelodySound() );
     synthPulse.addSound(new pulseSynthSound());
     synth2.addSound(new FMSynthSound());
 
     // loop that gets updated 
     for (int i = 0; i < voiceCount; i++) // set detune 
     {
-        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-        v->setVolumePointer(volumeParameter);
+        MelodyVoice* v = dynamic_cast<MelodyVoice*>(synth.getVoice(i));
+        v->setVolumePointer(volumeParameterTop);
 
         FMsynthVoice* d = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
-        d->setVolumePointer(volumeParameter);
+        d->setVolumePointer(volumeParameterMiddle);
         d->setModFilterParams(cuttOffMode, minVal, maxVal);
-        //int bcd = abc->getMode();
-        //DBG(bcd);
 
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
-        point->setMode(modeParameter);
-        point->setVolumePointer(volumeParameter);
-        point->setMode(modeParameter);
+        point->setVolumePointer(volumeParameterBottom);
 
     }
 }
@@ -95,8 +95,8 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
     rightPan.setFrequency(0.1);
 
     // smooth value setting
-    smoothVolume.reset(sampleRate, 1.0f);
-    smoothVolume.setCurrentAndTargetValue(0.0);
+    smoothReverb.reset(sampleRate, 1.0f);
+    smoothReverb.setCurrentAndTargetValue(0.0);
 
     // set the sample rate of synths
     synth.setCurrentPlaybackSampleRate(sampleRate); 
@@ -105,7 +105,7 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
 
     for (int i = 0; i < voiceCount; i++) // set sample rate for each voice
     {
-        MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
+        MelodyVoice* v = dynamic_cast<MelodyVoice*>(synth.getVoice(i));
         v->init(sampleRate);
         pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
         point->init(sampleRate);
@@ -116,7 +116,7 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
     // set reverb parameters 
     reverbParams.dryLevel = 0.8f;
     reverbParams.wetLevel = 0.3f;
-    reverbParams.roomSize = *reverbParameter;
+    reverbParams.roomSize = *reverbParameter;   // this is varied dynamically
     reverb.setParameters(reverbParams);
     reverb.reset();
 
@@ -124,18 +124,19 @@ void MakeSoundAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlo
 
 void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    // modeOn has to be set in processBlock to check whether the values have changed
     modeOn = {(int) *Ionian, (int) *Dorian, (int) *Phrygian, (int) *Lydian, (int) *Mixolydian, (int) *Aeolian, (int) *Locrian };
-    std::vector<int> selectedModes;
+    std::vector<int> selectedModes;     // vector of modes selected
 
     for (int i = 0; i < modeCount; i++)
     {
-        if (modeOn[i] == 1)
+        if (modeOn[i] == 1)     // if a mode is selected ( i.e. parameter value == 1 )
         {
-            selectedModes.push_back(i); //setModeLimit
+            selectedModes.push_back(i);     // append elemenets to selectedModes
         }
     }
 
-    int totalVoiceUsed = -1;
+    int totalVoiceUsed = -1; // count the order of voices for synth2 ( goes from 0 to 1 to ... to voiceCount and is repeated )
 
     for (int i = 0; i < voiceCount; i++)
     {
@@ -145,36 +146,35 @@ void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
         totalVoiceUsed += voicesUsed;  // add up all the voices used
     }
 
-    totalVoiceUsed = totalVoiceUsed % voiceCount;
-    DBG(totalVoiceUsed);
+    totalVoiceUsed = totalVoiceUsed % voiceCount;   // modulus
 
     for (int i = 0; i < voiceCount; i++)
     {
-        FMsynthVoice* setModePointer = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i));
+        FMsynthVoice* setModePointer = dynamic_cast<FMsynthVoice*>(synth2.getVoice(i)); 
 
         if (totalVoiceUsed >= 0)
         {
-            setModePointer = dynamic_cast<FMsynthVoice*>(synth2.getVoice(totalVoiceUsed));
+            setModePointer = dynamic_cast<FMsynthVoice*>(synth2.getVoice(totalVoiceUsed));  
         }
+            
+        setModePointer->setModeLimit(selectedModes);    // set pointer to random mode value ( as long as the voice is used, the pointer will not be null )
+        int modeNumber = setModePointer->getMode();     // access mode value
+        int baseMidi = setModePointer->getBaseNote();   // access mode value
 
-        setModePointer->setModeLimit(selectedModes);
-        int modeNumber = setModePointer->getMode(); // access mode value
-        int baseMidi = setModePointer->getBaseNote(); // access mode value
 
-
-        if (modeNumber >= 0 && baseMidi > 0) 
+        if (modeNumber >= 0 && baseMidi >= 0) // if the pointers are not nullptr
         {
-
             pulseSynthVoice* point = dynamic_cast<pulseSynthVoice*>(synthPulse.getVoice(i));
-            point->setMode2(modeNumber); 
+            point->setMode(modeNumber);         // set random mode for synthPulse based on modes chosen by user
 
-            MySynthVoice* v = dynamic_cast<MySynthVoice*>(synth.getVoice(i));
-            v->setMode(baseMidi, modeNumber);
+            MelodyVoice* v = dynamic_cast<MelodyVoice*>(synth.getVoice(i));
+            v->setMode(baseMidi, modeNumber); // fix the key with baseMidi, set random mode for synthPulse based on modes chosen by user
         }
     }
 
     juce::ScopedNoDenormals noDenormals;
 
+    // add sample values
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synthPulse.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     synth2.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
@@ -182,15 +182,18 @@ void MakeSoundAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juc
     float* left = buffer.getWritePointer(0); // access the left channel
     float* right = buffer.getWritePointer(1); // access the right channel
 
-    for (int sample = 0; sample < buffer.getNumSamples(); sample++)
+    for (int sample = 0; sample < buffer.getNumSamples(); sample++) // loop for panning
     {
         left[sample] = left[sample] * leftPan.process();
         right[sample] = right[sample] * rightPan.process();
     }
 
-    reverbParams.roomSize = *reverbParameter;
-    reverb.setParameters(reverbParams);
-    reverb.processStereo(left, right, buffer.getNumSamples());
+    // smooth value for reverb change
+    smoothReverb.setTargetValue(*reverbParameter);
+    float reverbChange = smoothReverb.getNextValue();
+    reverbParams.roomSize = reverbChange;
+    reverb.setParameters(reverbParams);                         // set reverb parameters
+    reverb.processStereo(left, right, buffer.getNumSamples()); // add reverb effect
 }
 
 //==============================================================================
@@ -303,15 +306,19 @@ juce::AudioProcessorEditor* MakeSoundAudioProcessor::createEditor()
 //==============================================================================
 void MakeSoundAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
+    auto state = avpts.copyState();
+    std::unique_ptr < juce::XmlElement > xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
+
 }
 
 void MakeSoundAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
+    std::unique_ptr < juce::XmlElement > xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState.get() != nullptr)
+        if (xmlState -> hasTagName(avpts.state.getType()))
+            avpts.replaceState(juce::ValueTree::fromXml(*xmlState));
+
 }
 
 //==============================================================================

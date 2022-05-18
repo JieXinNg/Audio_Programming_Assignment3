@@ -9,10 +9,10 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "YourSynthVoice.h"
-#include "PulseSynth.h"
-#include "FMSynth.h"
-#include "Oscillator.h"
+#include "MelodySynth.h"    // synthesiser
+#include "PulseSynth.h"     // synthesiser
+#include "FMSynth.h"        // synthesiser
+#include "Oscillator.h"     // generate lfo for panning
 
 //==============================================================================
 /**
@@ -63,21 +63,24 @@ private:
     juce::Reverb::Parameters reverbParams;
 
     // synthesiser class
-    int voiceCount = 8;
     juce::Synthesiser synthPulse;
     juce::Synthesiser synth;
     juce::Synthesiser synth2;
+    int voiceCount = 8; // voice count for each synthesiser
     
     juce::AudioProcessorValueTreeState avpts;
+
     // parameters 
-    std::atomic<float>* volumeParameter;
-    std::atomic<float>* modeParameter;          // string to choose mode (scales)
+    std::atomic<float>* volumeParameterTop;
+    std::atomic<float>* volumeParameterMiddle;
+    std::atomic<float>* volumeParameterBottom;
     std::atomic<float>* reverbParameter;
+    juce::SmoothedValue<float> smoothReverb; // smooth value for reverb
     std::atomic<float>* cuttOffMode;
     std::atomic<float>* minVal;
     std::atomic<float>* maxVal;
 
-    // modes
+    // modes to be selected ( enabled / disabled)
     std::atomic<float>* Ionian;
     std::atomic<float>* Dorian;
     std::atomic<float>* Phrygian;
@@ -87,16 +90,12 @@ private:
     std::atomic<float>* Locrian;
     std::vector<int> modeOn;
     int modeCount = 7;
-
-    // smooth values
-    juce::SmoothedValue<float> smoothVolume;
     
-//    juce::AudioBuffer<float> audioBuffer;
+    // lfo to panning channels
     SineOsc leftPan;
     SineOsc rightPan;
-
-    int activeVoice;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MakeSoundAudioProcessor)
+
 };

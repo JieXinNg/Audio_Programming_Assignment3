@@ -34,22 +34,22 @@
 * @paranm _sr (float) set the sample rate
 * @param _mode (std::string) set the mode of the key "major" or "minor"
 * @param numOctaves (int) set the number of octaves to generate the possible notes
-* @param _pulseFreq frequency of pulse
+* @param speed (float) the speed is determined by the phasor frequency
+* @param lfoFreq (float) frequency for lfo
 * @param _pulsePower strength of pulse
 * @param noteDegree degree of the note in the scale
 * 
 * @return randomNoteGenerator() (float) outputs the sequencer 
 * @return getNotes(int noteDegree) (float) the frequency of the note selected
+* @return getNoteVector() returns the notes (std::vector<float>) based on the mode chosen 
 */
 class KeySignatures {
 public:
+
 	/**
 	* generate the possible notes based on the key
 	* 
-	* @param _baseNote (int) take in midi value to set as base note
 	* @paranm _sr (float) set the sample rate
-	* @param _mode (std::string) set the mode of the key "major" or "minor"
-	* @param numOctaves (int) set the number of octaves to generate the possible notes
 	*/
 	void setOscillatorParams(float _sr) 
 	{
@@ -75,6 +75,8 @@ public:
 
 	/**
 	* generate possible modes to be selected, called once before changeMode()
+	* 
+	* @param numOctaves (int) number of octaves to generate range of notes
 	*/
 	void generateNotesForModes(int numOctaves)
 	{
@@ -112,6 +114,13 @@ public:
 	}
 
 
+	/**
+	* change the mode, the mode can be changed dynamically by calling this function 
+	* 
+	* @param _baseNote (int) base note to generate the range of notes
+	* @param _mode (int) the mode chosen
+	* @param numOctaves (int) the number of octaves
+	*/
 	void changeMode(int _baseNote, float _mode, int numOctaves)
 	{
 		std::vector<float> _notes;       // vector to contain the generated notes for the scale
@@ -138,15 +147,19 @@ public:
 	}
 
 	/**
+	* set the pulse speed
 	* 
+	* @param speed (float) the speed is determined by the phasor frequency
 	*/
-	void setPulseSpeed(float phasorFreq)
+	void setPulseSpeed(float speed)
 	{
-		phasor.setFrequency(phasorFreq);
+		phasor.setFrequency(speed);
 	}
 
 	/**
-	*
+	* set the lfo frequency
+	* 
+	* @param lfoFreq (float)
 	*/
 	void setLfofreq(float lfoFreq)
 	{
@@ -156,8 +169,8 @@ public:
 	/**
 	* set the frequency and power of sine for sinePulse - has to be called before setKey
 	* 
-	* @param _pulseFreq frequency of pulse
-	* @param _pulsePower strength of pulse
+	* @param _pulseFreq (float) frequency of pulse
+	* @param _pulsePower (int) strength of pulse
 	*/
 	void setSinePulseParams(float _pulseFreq, int _pulsePower)
 	{
@@ -167,30 +180,34 @@ public:
 
 	/**
 	* random music sequencer - outputs the selected note (pulsed)
+	* randomly selects a wave type ( sine, square, triangular)
+	* 
+	* @return the output of the oscillator with delay (float)
 	*/
 	float randomNoteGenerator()
 	{
 		float pulseVolume; 
 		float output = 0;
-		if (phasor.process() <= 0.5f)
+
+		if (phasor.process() <= 0.5f) // set the volume
 		{
 			pulseVolume = sin(2.0 * 3.142 * phasor.process());
 		}
-		else
+		else // turn off volume
 		{
 			pulseVolume = 0;
 		}
 
-		if (randomOsc == 0)
+		if (randomOsc == 0) // select oscilator
 		{
 			output = sineOsc.process();
 		}
 
-		else if (randomOsc == 1)
+		else if (randomOsc == 1) // select oscilator
 		{
 			output = sqOsc.process();
 		}
-		else if (randomOsc == 2)
+		else if (randomOsc == 2) // select oscilator
 		{
 			output = triOsc.process();
 		}
@@ -213,8 +230,8 @@ public:
 			sineOsc.setFrequency(outVal);					  // set the frequency of sineOsc
 			sqOsc.setFrequency(outVal);
 			triOsc.setFrequency(outVal);
-			randomOsc = random.nextInt(3);
-			//DBG(numNotes);
+			randomOsc = random.nextInt(3);					  // variable to randomly select an oscillator
+
 		}
 	}
 
@@ -238,12 +255,6 @@ public:
 	}
 
 private:
-	// variables to be set in setKey()
-	int key;                        // midi value
-	float sampleRate;				// sample rate    
-	int numNotes = 7;               // number of notes according to number of octaves set in setKey
-	std::vector<float> notes;       // vector to contain the generated notes for the scale
-
 	// variables to be set in setSinePulseParams
 	float pulseFreq = 0.1;          // set the default frequency of sinPulse
 	int pulsePower = 9;            // set the default power of the sine wave for sinePulse
@@ -255,9 +266,18 @@ private:
 	SineOsc sinePulse;              // sine oscillator to modulate the volume to simulate pulse
 	Oscillator phasor;              // phasor to check the time to change frequency
 	SineOsc lfo;					// lfo to modulate the volume
+	Delay delay;					// delay effect
 
 	juce::Random random;            // random is called to select the notes to be played
-	int randomOsc;				// choose random oscillator
+	int randomOsc;					// choose random oscillator
+
+
+	// variables to be set in setKey()
+	int key;                        // midi value
+	float sampleRate;				// sample rate    
+	int numNotes = 7;               // number of notes according to number of octaves set in setKey
+	std::vector<float> notes;       // vector to contain the generated notes for the scale
+
 
 	// create dictionary to map the selected modes to the correct notes
 	// further modes can be mapped here rather than using if statements to check the input
@@ -265,7 +285,6 @@ private:
 	std::string mode;
 	int modeCount = 7;
 	std::string modeList[7] = { "Ionian / Major", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian / Minor", "Locrian" };
-	Delay delay;
 
 	// modes used
 	std::vector<int> ionian = { 0, 2, 4, 5, 7, 9, 11 }; // major
@@ -273,6 +292,7 @@ private:
 	std::vector<int> phrygian = { 0, 1, 3, 5, 7, 8, 10 };
 	std::vector<int> lydian = { 0, 2, 4, 6, 7, 9, 11 };
 	std::vector<int> mixolydian = { 0, 2, 4, 5, 7, 9, 10 };
-	std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // natural minor
+	std::vector<int> aeolian = { 0, 2, 3, 5, 7, 8, 10 }; // minor
 	std::vector<int> locrian = { 0, 1, 3, 5, 6, 8, 10 };
+
 };

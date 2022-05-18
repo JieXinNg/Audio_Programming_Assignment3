@@ -10,6 +10,16 @@
 
 #pragma once
 
+/**
+* outputs the delayed sample ( process() )
+* 
+* @param inputSample (float) 
+* @param sizeInSamples (int) sample rate 
+* @param _delayTimeInSamples (int)
+* 
+* @return output (float) the delayed sample
+* @return outVal (float)
+*/
 class Delay
 {
 public:
@@ -18,6 +28,7 @@ public:
 	* outputs the delayed sample
 	* 
 	* @param inputSample (float) 
+	* @return output (float) the delayed sample
 	*/
 	float process(float inputSample)
 	{
@@ -29,6 +40,8 @@ public:
 
 	/**
 	* called in process()
+	* 
+	* @return outVal (float)
 	*/
 	float readVal()
 	{
@@ -47,6 +60,8 @@ public:
 
 	/**
 	* called in process()
+	* 
+	* @param inputSample (float)
 	*/
 	void writeVal(float inputSample)
 	{

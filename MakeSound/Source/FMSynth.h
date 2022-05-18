@@ -31,7 +31,7 @@ class FMSynthSound : public juce::SynthesiserSound
 public:
     bool appliesToNote(int noteIn) override
     {
-        if (noteIn > 35 && noteIn <= 47) // change value here noteIn > 35 && noteIn <= 47
+        if (noteIn > 35 && noteIn <= 47) // between C2 (exclusive) and C3 (exclusive) 
             return true;
         else
             return false;
@@ -40,10 +40,31 @@ public:
     bool appliesToChannel(int) override { return true; }
 };
 
+
+/**
+* a synthesiser voice class with frequency modulation
+* inherits from juce::SynthesiserVoice
+*
+* @param sampleRate (float) sample rate
+* @param volumeInput (std::atomic<float>) pointer to volume
+* @param _cutoffMode (0 - low-pass, 1 - high-pass, 2 - band-pass)
+* @param _minVal 
+* @param _maxVal
+* @param _selectedMode (setModeLimit(std::vector<int>) vector of modes (the number of each mode)
+* @output getMode() outputs the mode (int) ( this is set whenever a key is pressed )
+* @output getBaseNote() midi note number (int) 
+* @output getVoiceUsed() (int) returns 1 or 0 depending if the voice is used
+*/
 class FMsynthVoice : public juce::SynthesiserVoice
 {
 public:
     FMsynthVoice() {}
+
+    /**
+    * set sample rate
+    *
+    * @param sampleRate (float)
+    */
     void init(float sampleRate)
     {
         sr = sampleRate; // local reference of the sample rate to be used in setModulationParameters()
@@ -98,26 +119,24 @@ public:
     }
 
     /**
-    * set oscillator modulation parameters - randomly selected from predefined values
+    * set oscillator modulation parameters - randomly selected from a range of values
     * 
-    * @param _sampleRate
+    * @param _sampleRate ( float )
     */
     void setModulationParameters(float _sampleRate)
     {
-        float sineOscsModFreq[4] = { 0.25, 0.5, 0.75, 1.0 };
-        int sineOscsModDurations[4] = { 180, 240, 300, 360 };
-        float freqs[4] = { 0.00166667f, 0.003333333f, 0.005f, 0.006666667f }; // 0.00166667 = 1 / 4 cycle / 2.5mins (1 / (10 * 60s) cycle/s)
-        float depths[4] = { 20, 30, 50, 70 };
-
-        float phaseModFreq = sineOscsModFreq[random.nextInt(4)];
+        float phaseModFreq = juce::jmap(random.nextFloat(), 0.25f, 1.0f);  // phase modulation frequency
+        int sineOscsModDurations[4] = { 180, 240, 300, 360 };              // phase modulation cycle
         int phaseModDuration = sineOscsModDurations[random.nextInt(4)];     
         float modFreq[4] = { phaseModFreq, phaseModFreq, phaseModFreq,phaseModFreq };
         int modDurations[4] = { phaseModDuration, phaseModDuration, phaseModDuration, phaseModDuration };
         sineOscs.setPhaseModulationParams(sr, modFreq, modDurations, 4); // change the num of oscillators here
 
-        float fmRate = freqs[random.nextInt(4)];
+
+        float fmRate = juce::jmap(random.nextFloat(), 0.00166667f, 0.006666667f); // frequency modulation rate
+        float fmFreq[4] = { fmRate, fmRate, fmRate, fmRate };                     
+        float depths[4] = { 20, 30, 50, 70 };                                     // frequency modulation depth
         float fmDepth = depths[random.nextInt(4)];
-        float fmFreq[4] = { fmRate, fmRate, fmRate, fmRate };
         float modDepth[4] = { fmDepth, fmDepth, fmDepth, fmDepth };
         sineOscs.setFrequencyModutions(fmFreq, modDepth, 4); // change the num of oscillators here
 
@@ -129,20 +148,24 @@ public:
     */
     void setFrequencies()
     {
-        std::vector<float> variation1 = { key.getNotes(0), key.getNotes(6), key.getNotes(11), key.getNotes(16) }; // 1, 7, 5, 3
+        // various forms of seventh chords
+        std::vector<float> variation1 = { key.getNotes(0), key.getNotes(6), key.getNotes(11), key.getNotes(16) };   // 1, 7, 5, 3
         std::vector<float> variation2 = { key.getNotes(14), key.getNotes(16), key.getNotes(18), key.getNotes(20) }; // 1, 3, 5, 7  
-        std::vector<float> variation3 = { key.getNotes(7), key.getNotes(12), key.getNotes(16), key.getNotes(20) }; // 1, 5, 3, 7
-        std::vector<float> variation4 = { key.getNotes(0), key.getNotes(4), key.getNotes(7), key.getNotes(9) }; // 1, 5, 1, 3
-        std::vector<float> variation5 = { key.getNotes(7), key.getNotes(9), key.getNotes(11), key.getNotes(13) }; // 1, 3, 5, 7
-        std::vector<float> variation6 = { key.getNotes(0), key.getNotes(4), key.getNotes(9), key.getNotes(13) }; // 1, 5, 3, 7
+        std::vector<float> variation3 = { key.getNotes(7), key.getNotes(12), key.getNotes(16), key.getNotes(20) };  // 1, 5, 3, 7
+        std::vector<float> variation4 = { key.getNotes(0), key.getNotes(4), key.getNotes(7), key.getNotes(9) };     // 1, 5, 1, 3
+        std::vector<float> variation5 = { key.getNotes(7), key.getNotes(9), key.getNotes(11), key.getNotes(13) };   // 1, 3, 5, 7
+        std::vector<float> variation6 = { key.getNotes(0), key.getNotes(4), key.getNotes(9), key.getNotes(13) };    // 1, 5, 3, 7
         std::vector<std::vector<float>> notes = { variation1, variation2, variation3, variation4, variation5, variation6 };
-        int pickChord = random.nextInt(6);
-        sineOscs.setFrequencies(notes[pickChord], 4);
+        int pickChord = random.nextInt(6);              // pick a random form 
+        sineOscs.setFrequencies(notes[pickChord], 4);   // set the frequency for the sine oscillators
+
     }
 
 
     /**
     * outputs the mode (int) ( this is set whenever a key is pressed ) 
+    * 
+    * @output mode (int) e.g.: 0 - ionian
     */
     int getMode()
     {
@@ -151,6 +174,8 @@ public:
 
     /**
     * outputs the baseNote ( this is set whenever a key is pressed ) 
+    * 
+    * @output baseNote (int) midi note number
     */
     int getBaseNote()
     {
@@ -170,6 +195,8 @@ public:
 
     /**
     * returns the number of voice used by synthesiser
+    * 
+    * @output voiceUsed (int) returns 1 or 0 depending if the voice is used
     */
     int getVoiceUsed()
     {
@@ -188,23 +215,20 @@ public:
      */
     void startNote(int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
-        voiceUsed += 1;
-
+        voiceUsed += 1; // called to change mode of the other synths every time a note is started
 
         env.reset();
         env.noteOn();
+
         playing = true;
         ending = false;
 
-        baseNote = midiNoteNumber - 12;
-        int modeCount = selectedMode.size();
-        int randomMode = random.nextInt(modeCount);
-        
-        mode = selectedMode[randomMode];
-        
-        
-        key.changeMode(midiNoteNumber, mode, 3);
-        setFrequencies();               // set freqeuncies 
+        baseNote = midiNoteNumber - 12;             // set the base note the define the key for the other synthesisers ( tranposed down an octave to get a wider range )
+        int modeCount = selectedMode.size();        // the number of modes chosen
+        int randomMode = random.nextInt(modeCount); 
+        mode = selectedMode[randomMode];            // randomly select a mode from the enabled modes
+        key.changeMode(midiNoteNumber, mode, 3);    // the mode is changed through this function
+        setFrequencies();                           // set freqeuncies of oscillators
          
     }
 
@@ -217,13 +241,14 @@ public:
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
     {
-        if (allowTailOff) // allow slow release of note
+        if (allowTailOff)   // allow slow release of note
         {
             env.noteOff();
             ending = true;
 
         }
-        else // shut off note
+
+        else                // shut off note
         {
             clearCurrentNote();
             playing = false;
@@ -263,7 +288,8 @@ public:
                 // outputs of oscillators
                 float totalOscs = (sineOscs.output(0) + sineOscs.output(1) + sineOscs.output(2) + sineOscs.output(3)) / 4;
                 float delayOutput = delay.process(totalOscs) * 0.5;
-                // applt filter to output
+
+                // apply filter to output
                 float currentSample = modFilter.process(totalOscs * envVal + delayOutput * delayEnv) / 2;
 
 
@@ -272,11 +298,10 @@ public:
                 {
                     outputBuffer.addSample(chan, sampleIndex, gainVal * currentSample);
                 }
-
-                // if it is entering the ending phase
-                if (ending)
+                
+                if (ending) // if it is entering the ending phase
                 {
-                    if (/*delayEnv < 0.0001 &&*/ envVal < 0.0001) // turn off sound when both envelopes are < 0.0001
+                    if (delayEnv < 0.0001 && envVal < 0.0001) // turn off the sound when both envelopes are < 0.0001
                     {
                         clearCurrentNote();
                         playing = false;
@@ -290,6 +315,7 @@ public:
             }
         }
     }
+
     //--------------------------------------------------------------------------
     void pitchWheelMoved(int) override {}
     
@@ -321,13 +347,11 @@ private:
 
     // effects
     ModulatingFilter modFilter;
-    // filter parameters
-    std::atomic<float>* cutoffMode;
-    std::atomic<float>* minVal;
-    std::atomic<float>* maxVal;
+    std::atomic<float>* cutoffMode;         // filter parameter
+    std::atomic<float>* minVal;             // filter parameter
+    std::atomic<float>* maxVal;             // filter parameter
     
-    // volume parameter
-    std::atomic<float>* volume;
+    std::atomic<float>* volume;             // volume parameter
     juce::SmoothedValue<float> smoothVolume; // smooth value
 
     // variables for setting chords
@@ -337,7 +361,7 @@ private:
 
     Delay delay;            
     juce::Random random;    // to generate random values
-    std::vector<int> selectedMode = { 0 };
-    int voiceUsed = 0;
+    std::vector<int> selectedMode = { 0 }; // set default value ( ionian )
+    int voiceUsed = 0;      // this is used to randomise the mode for other synths
 
 };

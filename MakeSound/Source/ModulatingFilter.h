@@ -24,6 +24,7 @@
 * @param _cutoffMode (std::string) "high" or "low", if some other string is passed through the function, the original audio will be returned
 * @param _minVal (float)
 * @param _maxVal (float)
+* @param sample (float) audio input to be filtered (cut off)
 * @return process() (float)
 */
 class ModulatingFilter
@@ -35,9 +36,6 @@ public:
     *
     * @param sampleRate (float) sample of lfo
     * @param lfoFreq (float) frequency of lfo
-    * @param _cutoffMode (std::string) "high" or "low", if some other string is passed through the function, the original audio will be returned
-    * @param _minVal (float)
-    * @param _maxVal (float)
     */
     void setParams(float _sampleRate, float lfoFreq)
     {
@@ -64,7 +62,7 @@ public:
     /**
     * take in audio as input and return the filter audio
     *
-    * @param sample audio input to be filtered (cut off)
+    * @param sample (float) audio input to be filtered (cut off)
     */
     float process(float sample)
     {
