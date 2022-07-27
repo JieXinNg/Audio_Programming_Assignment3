@@ -9,6 +9,7 @@
 
 #pragma once
 #include <JuceHeader.h>
+#include "Oscillator.h"
 
 /**
 * YourSynthVoice class : generates sythesiser
@@ -25,31 +26,40 @@ public:
 };
 
 
-
-
 // =================================
 // =================================
 // Synthesiser Voice - your synth code goes in here
 
 /*!
- @class YourSynthVoice
+ @class MySynthVoice
  @abstract struct defining the DSP associated with a specific voice.
  @discussion multiple YourSynthVoice objects will be created by the Synthesiser so that it can be played polyphicially
- 
- @namespace none
- @updated 2019-06-18
  */
-class YourSynthVoice : public juce::SynthesiserVoice
+class MySynthVoice : public juce::SynthesiserVoice
 {
 public:
-    YourSynthVoice() 
+    MySynthVoice() {}
+
+    void init(float sampleRate)
     {
-        juce::ADSR::Parameters envParams;
-        envParams.attack = 0.1; // fade in
-        envParams.decay = 0.25;  // fade down to sustain level
-        envParams.sustain = 0.25; // vol level
-        envParams.release = 1.0; // fade out
+        // set sample rate for oscillators and envelop
+        osc.setSampleRate(sampleRate);
+        detuneOsc.setSampleRate(sampleRate);
+        env.setSampleRate(sampleRate);
+
+        juce::ADSR::Parameters envParams;// create insatnce of ADSR envelop
+        envParams.attack = 0.1f; // fade in
+        envParams.decay = 0.25f;  // fade down to sustain level
+        envParams.sustain = 0.5f; // vol level
+        envParams.release = 1.0f; // fade out
+        env.setParameters(envParams); // set the envelop parameters
     }
+
+    void setDetunePointer(std::atomic<float>* detuneInput)
+    {
+        detuneAmount = detuneInput;
+    }
+
     //--------------------------------------------------------------------------
     /**
      What should be done when a note starts
@@ -62,8 +72,16 @@ public:
     void startNote (int midiNoteNumber, float velocity, juce::SynthesiserSound*, int /*currentPitchWheelPosition*/) override
     {
         playing = true;
-        float freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-        
+        ending = false;
+
+        freq = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
+
+        // set freqeuncies 
+        osc.setFrequency(freq);
+        detuneOsc.setFrequency(freq - *detuneAmount);
+
+        env.reset(); // can delete this if we dont want it to reset
+        env.noteOn();
     }
     //--------------------------------------------------------------------------
     /// Called when a MIDI noteOff message is received
@@ -75,10 +93,16 @@ public:
      */
     void stopNote(float /*velocity*/, bool allowTailOff) override
     {
-        clearCurrentNote(); // delete
-        //env.setSampleRate(); // sample rate?
-        env.noteOn();
-        playing = false;
+        if (allowTailOff) // allow slow release of note
+        {
+            env.noteOff();
+            ending = true;
+        }
+        else // shut off note
+        {
+            clearCurrentNote();
+            playing = false;
+        }
     }
     
     //--------------------------------------------------------------------------
@@ -96,25 +120,31 @@ public:
 
         if (playing) // check to see if this voice should be playing
         {
-            // iterate through the necessary number of samples (from startSample up to startSample + numSamples)
+            // if we modulate the detune amount with an lfo, we need to put this inside the dsp loop
+            detuneOsc.setFrequency(freq - *detuneAmount); 
+
+            // DSP loop (from startSample up to startSample + numSamples)
             for (int sampleIndex = startSample;   sampleIndex < (startSample+numSamples);   sampleIndex++)
             {
-                // your sample-by-sample DSP code here!
-                // An example white noise generater as a placeholder - replace with your own code
-                float currentSample = random.nextFloat()*2 - 1.0;
+
+                float envVal = env.getNextSample();
+
+                float currentSample = (osc.process() + detuneOsc.process()) * 0.5f * envVal; // apply envelop to oscillator
                 
                 // for each channel, write the currentSample float to the output
                 for (int chan = 0; chan<outputBuffer.getNumChannels(); chan++)
                 {
                     // The output sample is scaled by 0.2 so that it is not too loud by default
-                    outputBuffer.addSample (chan, sampleIndex, currentSample * 0.2);
+                    outputBuffer.addSample (chan, sampleIndex, currentSample * 0.5);
                 }
 
-                float envVal = env.getNextSample();
-
-                if (envVal < 0.0001)
+                if (ending)
                 {
-                    playing = false;
+                    if (envVal < 0.0001)
+                    {
+                        clearCurrentNote();
+                        playing = false;
+                    }
                 }
             }
         }
@@ -132,7 +162,7 @@ public:
      */
     bool canPlaySound (juce::SynthesiserSound* sound) override
     {
-        return dynamic_cast<YourSynthVoice*> (sound) != nullptr;
+        return dynamic_cast<MySynthVoice*> (sound) != nullptr;
     }
 
     void linkParameters(std::atomic<float>* ptrToParam)
@@ -142,14 +172,18 @@ public:
     //--------------------------------------------------------------------------
 private:
     //--------------------------------------------------------------------------
-    // Set up any necessary variables here
-    /// Should the voice be playing?
-    bool playing = false;
-    int voiceCount = 4;
-    juce::ADSR env;
+    bool playing = false; // set default value for playing to be false
+    bool ending = false; // bool to determine the moment the note is released
+    int voiceCount = 8; // set the voice count of our synthesiser
+    juce::ADSR env; // envelope for synthesiser
 
+    juce::Random random; //a random object for use in our test noise function
     std::atomic<float>* releaseParam;
 
-    /// a random object for use in our test noise function
-    juce::Random random;
+    // Oscillators
+    SineOsc osc;
+    TriOsc detuneOsc;
+
+    std::atomic<float>* detuneAmount;
+    float freq;
 };
